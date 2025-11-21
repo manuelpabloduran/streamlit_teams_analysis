@@ -92,7 +92,7 @@ if team_name:
     st.write(f"Mostrando análisis para **{team_name}**")
     
     st.header("Análisis de progresión por pasillo en campo rival")
-    col1, col2 = st.columns(2)
+    col1, col2 = st.columns([2, 1])
 
     with col1:
         # Generar y mostrar el gráfico
@@ -105,7 +105,7 @@ if team_name:
         )
 
         if fig:
-            st.pyplot(fig)
+            st.pyplot(fig, use_container_width=True)
             st.caption("Ingresos y finalizaciones por pasillo en campo rival")
         else:
             st.warning(f"No hay datos de progresión para {team_name}.")
@@ -113,7 +113,7 @@ if team_name:
     with col2:
         fig_sequences = plot_offensive_sequences(df_filtrado, team_name)
         if fig_sequences:
-            st.pyplot(fig_sequences)
+            st.pyplot(fig_sequences, use_container_width=True)
             st.caption("Secuencias típicas entre pasillos en campo rival")
         else:
             st.warning(f"No hay datos de secuencias ofensivas para {team_name}.")
