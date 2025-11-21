@@ -79,7 +79,7 @@ def procesar_competicion(df_comp):
 conteo_liga = procesar_competicion(df_filtrado)
 
 # Agrupar por posesión para obtener primer/último evento y estadísticas
-grouped = df_analisis_progreso.groupby('Posesion')
+grouped = df_filtrado.groupby('Posesion')
 inicio_events = grouped.first()
 fin_events = grouped.last()
 
@@ -136,7 +136,7 @@ if team_name:
     
     # Generar y mostrar el gráfico
     fig = plot_team_progression_with_hist(
-        df_analisis_progreso=df,
+        df_analisis_progreso=df_filtrado,
         team_name=team_name,
         conteo_inicio=conteo_inicio_liga,
         conteo_fin=conteo_fin_liga,
