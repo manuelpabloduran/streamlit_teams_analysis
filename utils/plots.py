@@ -5,6 +5,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from mplsoccer import Pitch
+import streamlit as st
+from scipy.interpolate import make_interp_spline
+from collections import defaultdict
 
 # Definición de pasillos_y para plot_team_progression_with_hist
 pasillos_y = {
@@ -72,7 +75,7 @@ def plot_team_progression_with_hist(df_analisis_progreso, team_name, conteo_inic
 
     pitch = Pitch(pitch_type='opta', line_zorder=2, pitch_color='#22312b')
     fig, axs = pitch.jointgrid(
-        figheight=12,
+        figheight=8,
         left=None,
         bottom=0.07,
         marginal=0.12,
@@ -171,6 +174,116 @@ def plot_team_progression_with_hist(df_analisis_progreso, team_name, conteo_inic
     ax_pitch.set_xlim(0, 105)
     ax_pitch.set_ylim(-10, 110)
     ax_pitch.tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
+    
+    return fig
+
+def plot_offensive_sequences(df_filtrado, team_name):
+    """
+    Crea un Bumpy Chart de las secuencias ofensivas por pasillos para un equipo específico.
+    """
+
+    df_team = df_filtrado[df_filtrado['TeamName'] == team_name].copy()
+
+    if 'pasillo' not in df_team.columns:
+        st.error("La columna 'pasillo' no se encontró en los datos.")
+        return None
+
+    df_team = df_team.sort_values(by=['Posesion', 'time_seconds'])
+
+    def remove_consecutive_duplicates(seq_list):
+        if not seq_list:
+            return []
+        res = [seq_list[0]]
+        for i in range(1, len(seq_list)):
+            if seq_list[i] != seq_list[i-1]:
+                res.append(seq_list[i])
+        return res
+
+    sequences = df_team.groupby('Posesion')['pasillo'].apply(list)
+    sequences = sequences[sequences.str.len() > 1]
+    sequences_cleaned = sequences.apply(remove_consecutive_duplicates)
+
+    for i, seq in sequences_cleaned.items():
+        if len(seq) == 1:
+            sequences_cleaned[i] = [seq[0], seq[0]]
+
+    sequence_counts = sequences_cleaned.value_counts()
+
+    if sequence_counts.empty:
+        return None
+
+    start_counts = defaultdict(int)
+    end_counts = defaultdict(int)
+
+    for seq, count in sequence_counts.items():
+        if len(seq) > 0:
+            start_counts[seq[0]] += count
+            end_counts[seq[-1]] += count
+
+    pasillo_y_map = {
+        'Pasillo Exterior Izquierdo': 89.5,
+        'Pasillo Interior Izquierdo': 71,
+        'Pasillo Central': 50,
+        'Pasillo Interior Derecho': 29,
+        'Pasillo Exterior Derecho': 10.5
+    }
+
+    corridor_colors = {
+        'Pasillo Exterior Izquierdo': '#ff6666',
+        'Pasillo Interior Izquierdo': '#ffcc66',
+        'Pasillo Central': '#ffff66',
+        'Pasillo Interior Derecho': '#66ff66',
+        'Pasillo Exterior Derecho': '#66ffff'
+    }
+
+    pitch = Pitch(pitch_type='opta', pitch_color='#22312b', line_color='white', line_zorder=1)
+    fig, ax = pitch.draw(figsize=(15, 10))
+    fig.set_facecolor('#22312b')
+
+    for pasillo, y_val in pasillo_y_map.items():
+        y_start = y_val - 10.5
+        y_end = y_val + 10.5
+        ax.fill_between(x=[0, 100], y1=y_start, y2=y_end, color='gray', alpha=0.1, zorder=0)
+        
+        pasillo_name = pasillo.replace('Pasillo ', '')
+        ax.text(48, y_val, pasillo_name, ha='right', va='center', color='white', fontsize=10, alpha=0.7)
+        
+        start_count = start_counts.get(pasillo, 0)
+        ax.text(48, y_val - 5, f'({start_count} inician)', ha='right', va='center', color='white', fontsize=8, alpha=0.7)
+
+        end_count = end_counts.get(pasillo, 0)
+        ax.text(102, y_val, f'({end_count} finalizan)', ha='left', va='center', color='white', fontsize=8, alpha=0.7)
+
+    max_count = sequence_counts.max()
+    min_count = sequence_counts.min()
+
+    for seq, count in sequence_counts.items():
+        if len(seq) < 2:
+            continue
+
+        norm_count = np.sqrt((count - min_count) / (max_count - min_count)) if max_count > min_count else 1.0
+        
+        linewidth = 1 + norm_count * 5
+        alpha = 0.3 + norm_count * 0.7
+
+        y_coords = [pasillo_y_map[p] for p in seq]
+        x_coords = np.linspace(50, 100, len(seq))
+        
+        start_pasillo = seq[0]
+        line_color = corridor_colors.get(start_pasillo, 'white')
+
+        if len(x_coords) > 2:
+            spline = make_interp_spline(x_coords, y_coords, k=2)
+            x_smooth = np.linspace(x_coords.min(), x_coords.max(), 200)
+            y_smooth = spline(x_smooth)
+            ax.plot(x_smooth, y_smooth, color=line_color, linewidth=linewidth, alpha=alpha, zorder=2)
+        else:
+            ax.plot(x_coords, y_coords, color=line_color, linewidth=linewidth, alpha=alpha, zorder=2)
+
+        ax.scatter(x_coords, y_coords, color=line_color, s=25, alpha=alpha, zorder=3, ec='black', lw=0.5)
+
+    ax.set_title(f'Secuencias Ofensivas por Pasillos - {team_name}', color='white', fontsize=20, pad=20)
+    ax.set_xlim(45, 105)
     
     return fig
 

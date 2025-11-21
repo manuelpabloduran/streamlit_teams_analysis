@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from utils.plots import plot_team_progression_with_hist
+from utils.plots import plot_team_progression_with_hist, plot_offensive_sequences
 
 st.title('Análisis Ofensivo')
 
@@ -104,3 +104,10 @@ if team_name:
         st.pyplot(fig)
     else:
         st.warning(f"No hay datos de progresión para {team_name}.")
+
+    st.header('Secuencias Ofensivas por Pasillos')
+    fig_sequences = plot_offensive_sequences(df_filtrado, team_name)
+    if fig_sequences:
+        st.pyplot(fig_sequences)
+    else:
+        st.warning(f"No hay datos de secuencias ofensivas para {team_name}.")
