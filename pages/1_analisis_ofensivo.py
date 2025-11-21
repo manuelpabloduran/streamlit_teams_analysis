@@ -130,7 +130,6 @@ st.header('Análisis de Progresión por Equipo')
 
 # Selección de equipo
 team_name = st.selectbox('Selecciona un equipo:', teams)
-competition_id = 0 # Ya no se usa para filtrar, se pasa un valor dummy
 
 if team_name:
     st.write(f"Mostrando análisis para **{team_name}**")
@@ -139,7 +138,6 @@ if team_name:
     fig = plot_team_progression_with_hist(
         df_analisis_progreso=df,
         team_name=team_name,
-        competition_id=competition_id,
         conteo_inicio=conteo_inicio_liga,
         conteo_fin=conteo_fin_liga,
         stats=stats_df
