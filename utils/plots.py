@@ -153,13 +153,12 @@ def plot_xgot_scatter(df):
     return fig_xgot
 
 # Visualización con histogramas para un equipo específico
-def plot_team_progression_with_hist(df_analisis_progreso, team_name, competition_id, conteo_inicio, conteo_fin, stats, bins_x=np.linspace(50, 95, 25), bins_y=np.linspace(5, 95, 25)):
+def plot_team_progression_with_hist(df_analisis_progreso, team_name, conteo_inicio, conteo_fin, stats, bins_x=np.linspace(50, 95, 25), bins_y=np.linspace(5, 95, 25)):
     team_events = df_analisis_progreso[
-        (df_analisis_progreso['TeamName'] == team_name) &
-        (df_analisis_progreso['IdCompetition'] == competition_id)
+        (df_analisis_progreso['TeamName'] == team_name)
     ]
     if team_events.empty:
-        print(f'Sin eventos para {team_name} en competición {competition_id}')
+        print(f'Sin eventos para {team_name}')
         return None
 
     y_mean = team_events['y'].mean()
