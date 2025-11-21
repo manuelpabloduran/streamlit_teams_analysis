@@ -91,23 +91,29 @@ team_name = st.selectbox('Selecciona un equipo:', teams)
 if team_name:
     st.write(f"Mostrando análisis para **{team_name}**")
     
-    # Generar y mostrar el gráfico
-    fig = plot_team_progression_with_hist(
-        df_analisis_progreso=df_filtrado,
-        team_name=team_name,
-        conteo_inicio=conteo_inicio_liga,
-        conteo_fin=conteo_fin_liga,
-        stats=stats_df
-    )
+    st.header("Análisis de progresión por pasillo en campo rival")
+    col1, col2 = st.columns(2)
 
-    if fig:
-        st.pyplot(fig)
-    else:
-        st.warning(f"No hay datos de progresión para {team_name}.")
+    with col1:
+        # Generar y mostrar el gráfico
+        fig = plot_team_progression_with_hist(
+            df_analisis_progreso=df_filtrado,
+            team_name=team_name,
+            conteo_inicio=conteo_inicio_liga,
+            conteo_fin=conteo_fin_liga,
+            stats=stats_df
+        )
 
-    st.header('Secuencias Ofensivas por Pasillos')
-    fig_sequences = plot_offensive_sequences(df_filtrado, team_name)
-    if fig_sequences:
-        st.pyplot(fig_sequences)
-    else:
-        st.warning(f"No hay datos de secuencias ofensivas para {team_name}.")
+        if fig:
+            st.pyplot(fig)
+            st.caption("Ingresos y finalizaciones por pasillo en campo rival")
+        else:
+            st.warning(f"No hay datos de progresión para {team_name}.")
+
+    with col2:
+        fig_sequences = plot_offensive_sequences(df_filtrado, team_name)
+        if fig_sequences:
+            st.pyplot(fig_sequences)
+            st.caption("Secuencias típicas entre pasillos en campo rival")
+        else:
+            st.warning(f"No hay datos de secuencias ofensivas para {team_name}.")
