@@ -1,23 +1,20 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from utils.plots import plot_team_progression_with_hist, pasillos_y
+from utils.plots import plot_team_progression_with_hist
 
 st.title('Análisis Ofensivo')
 
-# --- Carga de Datos ---
+# --- Carga y Preparación de Datos ---
 @st.cache_data
-def load_data(url):
+def load_and_prepare_data(url):
     df = pd.read_csv(url)
-    # Asumiendo que el CSV tiene columnas 'x' e 'y' para la progresión.
-    # Si los nombres son diferentes (ej. 'start_x', 'start_y'), ajústalos aquí.
-    # Si no existen, el gráfico no mostrará los puntos de eventos.
-    if 'x' not in df.columns:
-        df['x'] = np.nan
-    if 'y' not in df.columns:
-        df['y'] = np.nan
-    if 'IdCompetition' not in df.columns:
-        df['IdCompetition'] = 0 # Placeholder si no existe
+    # !!! IMPORTANTE: Reemplaza 'location_x' y 'location_y' con los nombres de columna correctos para las coordenadas de eventos en tu CSV.
+    if 'location_x' in df.columns and 'location_y' in df.columns:
+        df = df.rename(columns={'location_x': 'x', 'location_y': 'y'})
+    else:
+        if 'x' not in df.columns: df['x'] = np.nan
+        if 'y' not in df.columns: df['y'] = np.nan
     return df
 
 # Definir la función para asignar pasillos
@@ -30,102 +27,62 @@ def asignar_pasillo(y):
         return 'Pasillo Central'
     elif 63 <= y <= 79:
         return 'Pasillo Interior Izquierdo'
-    else: # y > 81
+    else: # y > 79
         return 'Pasillo Exterior Izquierdo'
 
-df = load_data('possessions_with_shots.csv')
+df = load_and_prepare_data('possessions_with_shots.csv')
 teams = sorted(df['TeamName'].unique())
 
-# Preparar datos para el análisis de inicio/fin
-df_analisis_progreso = df[df['x'] > 50].copy()
-df_analisis_progreso['pasillo'] = df_analisis_progreso['y'].apply(asignar_pasillo)
-df_analisis_progreso = df_analisis_progreso.sort_values(by=['Posesion', 'time_seconds'])
-
-# Reordenar las columnas para una mejor visualización
-column_order = [
-    'Pasillo Exterior Izquierdo', 
-    'Pasillo Interior Izquierdo', 
-    'Pasillo Central', 
-    'Pasillo Interior Derecho', 
-    'Pasillo Exterior Derecho'
-]
-
 # 1. Excluir posesiones con córners
-posesiones_con_corner = df_analisis_progreso[df_analisis_progreso['corner_taken'].notna()]['Posesion'].unique()
-df_sin_corners = df_analisis_progreso[~df_analisis_progreso['Posesion'].isin(posesiones_con_corner)]
+posesiones_con_corner = df[df['corner_taken'].notna()]['Posesion'].unique()
+df_sin_corners = df[~df['Posesion'].isin(posesiones_con_corner)]
 
-# 2. Filtrar por los NaEventType deseados
+# 2. Filtrar por eventos deseados y en campo rival
 eventos_deseados = [
     'Pass', 'Take On', 'Ball recovery', 'BallDrive', 'Ball touch', 
     'Tackle', 'Interception', 'Blocked Pass', 'Offside Pass'
 ]
-df_filtrado = df_sin_corners[df_sin_corners['NaEventType'].isin(eventos_deseados)].copy()
+df_filtrado = df_sin_corners[
+    (df_sin_corners['NaEventType'].isin(eventos_deseados)) &
+    (df_sin_corners['x'] > 50)
+].copy()
 
-# Función para procesar un dataframe de una competición
-def procesar_competicion(df_comp):
-    # Aplicar filtro de campo rival (x > 50)
-    df_rival = df_comp[df_comp['x'] > 50].copy()
-    # Asignar pasillos
-    df_rival['pasillo'] = df_rival['y'].apply(asignar_pasillo)
-    # Contar ocurrencias
-    conteo = df_rival.groupby(['TeamName', 'pasillo']).size().unstack(fill_value=0)
-    # Reordenar y asegurar columnas
-    for col in column_order:
-        if col not in conteo.columns:
-            conteo[col] = 0
-    return conteo[column_order]
+# 3. Asignar pasillos y ordenar eventos
+df_filtrado['pasillo'] = df_filtrado['y'].apply(asignar_pasillo)
+df_filtrado = df_filtrado.sort_values(by=['Posesion', 'time_seconds'])
 
-# 3. Separar por competición y procesar
-conteo_liga = procesar_competicion(df_filtrado)
-
-# Agrupar por posesión para obtener primer/último evento y estadísticas
+# 4. Calcular estadísticas
 grouped = df_filtrado.groupby('Posesion')
 inicio_events = grouped.first()
 fin_events = grouped.last()
 
-# Calcular estadísticas por posesión
-possession_stats = grouped.agg(
+# Calcular promedios por equipo
+stats_df = grouped.agg(
     TeamName=('TeamName', 'first'),
-    IdCompetition=('IdCompetition', 'first'),
     avg_pasillos=('pasillo', 'nunique'),
     duration=('time_seconds', lambda x: x.max() - x.min()),
     n_events=('time_seconds', 'count'),
     width=('y', lambda x: x.max() - x.min())
-)
+).groupby('TeamName').mean()
 
-# Calcular promedios por equipo
-stats_df = possession_stats.groupby('TeamName').agg({
-    'IdCompetition': 'first',
-    'avg_pasillos': 'mean',
-    'duration': 'mean',
-    'n_events': 'mean',
-    'width': 'mean'
-}).reset_index()
+# 5. Calcular conteos de inicio y fin por pasillo
+column_order = [
+    'Pasillo Exterior Izquierdo', 'Pasillo Interior Izquierdo', 'Pasillo Central', 
+    'Pasillo Interior Derecho', 'Pasillo Exterior Derecho'
+]
 
-# Separar estadísticas por competición
-stats_df = stats_df.set_index('TeamName')
-
-# Función para obtener los conteos de inicio y fin por competición
-def get_start_end_counts(df_start_events, df_end_events):
-    df_start_comp = df_start_events.copy()
-    df_end_comp = df_end_events.copy()
-    
-    conteo_inicio = df_start_comp.groupby(['TeamName', 'pasillo']).size().unstack(fill_value=0)
-    conteo_fin = df_end_comp.groupby(['TeamName', 'pasillo']).size().unstack(fill_value=0)
-    
+def get_counts(df_events):
+    counts = df_events.groupby(['TeamName', 'pasillo']).size().unstack(fill_value=0)
+    # Asegurar que todas las columnas de pasillos existan
     for col in column_order:
-        if col not in conteo_inicio.columns:
-            conteo_inicio[col] = 0
-        if col not in conteo_fin.columns:
-            conteo_fin[col] = 0
-            
-    return conteo_inicio[column_order], conteo_fin[column_order]
+        if col not in counts.columns:
+            counts[col] = 0
+    return counts[column_order]
 
-# Obtener conteos para ambas ligas
-conteo_inicio_liga, conteo_fin_liga = get_start_end_counts(inicio_events, fin_events)
+conteo_inicio_liga = get_counts(inicio_events)
+conteo_fin_liga = get_counts(fin_events)
 
-
-
+# --- Interfaz de Streamlit ---
 st.header('Análisis de Progresión por Equipo')
 
 # Selección de equipo
@@ -146,4 +103,4 @@ if team_name:
     if fig:
         st.pyplot(fig)
     else:
-        st.warning(f"No hay datos de progresión para {team_name} en la competición seleccionada.")
+        st.warning(f"No hay datos de progresión para {team_name}.")
