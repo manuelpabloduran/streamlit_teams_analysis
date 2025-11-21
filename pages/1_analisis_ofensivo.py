@@ -51,8 +51,8 @@ column_order = [
 ]
 
 # 1. Excluir posesiones con córners
-posesiones_con_corner = df[df['corner_taken'].notna()]['Posesion'].unique()
-df_sin_corners = df[~df['Posesion'].isin(posesiones_con_corner)]
+posesiones_con_corner = df_analisis_progreso[df_analisis_progreso['corner_taken'].notna()]['Posesion'].unique()
+df_sin_corners = df_analisis_progreso[~df_analisis_progreso['Posesion'].isin(posesiones_con_corner)]
 
 # 2. Filtrar por los NaEventType deseados
 eventos_deseados = [
