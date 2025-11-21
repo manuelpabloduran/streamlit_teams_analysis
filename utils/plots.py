@@ -8,107 +8,12 @@ from mplsoccer import Pitch
 
 # Definición de pasillos_y para plot_team_progression_with_hist
 pasillos_y = {
-    'Carril Central': (40, 60),
+    'Pasillo Central': (40, 60),
     'Pasillo Interior Izquierdo': (60, 80),
     'Pasillo Interior Derecho': (20, 40),
-    'Banda Izquierda': (80, 100),
-    'Banda Derecha': (0, 20)
+    'Pasillo Exterior Izquierdo': (80, 100),
+    'Pasillo Exterior Derecho': (0, 20)
 }
-
-def plot_shot_map(df):
-    fig = px.scatter(
-        df,
-        x='shot_start_x',
-        y='shot_start_y',
-        color='shot_outcome_name',
-        hover_data=['player_name', 'shot_statsbomb_xg'],
-        title='Mapa de Tiros'
-    )
-    fig.add_shape(
-        type='rect',
-        x0=120, y0=0, x1=102, y1=80,
-        line=dict(color='white')
-    )
-    fig.add_shape(
-        type='rect',
-        x0=120, y0=18, x1=114, y1=62,
-        line=dict(color='white')
-    )
-    fig.add_shape(
-        type='rect',
-        x0=120, y0=30, x1=108, y1=50,
-        line=dict(color='white')
-    )
-    fig.update_layout(
-        xaxis_title='Largo del Campo',
-        yaxis_title='Ancho del Campo',
-        plot_bgcolor='green',
-        xaxis=dict(range=[0, 120]),
-        yaxis=dict(range=[0, 80])
-    )
-    return fig
-
-def plot_shot_quality(df):
-    fig = px.histogram(
-        df,
-        x='shot_statsbomb_xg',
-        nbins=20,
-        title='Distribución de Calidad de Tiro (xG)'
-    )
-    fig.update_layout(
-        xaxis_title='xG (Goles Esperados)',
-        yaxis_title='Cantidad de Tiros'
-    )
-    return fig
-
-def plot_possession_duration(df):
-    df_shot = df[df['shot_outcome_name'].notna()]
-    fig = px.histogram(
-        df_shot,
-        x='possession_duration',
-        nbins=30,
-        title='Distribución de Duración de Posesión con Tiro'
-    )
-    fig.update_layout(
-        xaxis_title='Duración de la Posesión (segundos)',
-        yaxis_title='Cantidad de Posesiones'
-    )
-    return fig
-
-def plot_defensive_actions(df):
-    # This is a placeholder for a more complex defensive plot.
-    # For now, we will plot the origin of opponent shots.
-    fig = px.density_heatmap(
-        df,
-        x='shot_start_x',
-        y='shot_start_y',
-        z='shot_statsbomb_xg',
-        histfunc='avg',
-        title='Mapa de Calor de xG de Tiros del Rival'
-    )
-    fig.add_shape(
-        type='rect',
-        x0=0, y0=0, x1=18, y1=80,
-        line=dict(color='white')
-    )
-    fig.add_shape(
-        type='rect',
-        x0=0, y0=18, x1=6, y1=62,
-        line=dict(color='white')
-    )
-    fig.add_shape(
-        type='rect',
-        x0=0, y0=30, x1=12, y1=50,
-        line=dict(color='white')
-    )
-    fig.update_layout(
-        xaxis_title='Largo del Campo',
-        yaxis_title='Ancho del Campo',
-        plot_bgcolor='green',
-        xaxis=dict(range=[0, 120]),
-        yaxis=dict(range=[0, 80])
-    )
-    return fig
 
 def plot_xg_scatter(df):
     """
