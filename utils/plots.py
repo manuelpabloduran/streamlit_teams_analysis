@@ -298,7 +298,7 @@ def plot_player_xg_xgot(df, team_name):
         return None
 
     shot_summary = (
-        df_equipo[df_equipo['NaEventType'].isin(['Attempt Saved', 'Miss', 'Post', 'Goal'])]
+        df_equipo[(df_equipo['NaEventType'].isin(['Attempt Saved', 'Miss', 'Post', 'Goal'])) & (~df_equipo['xg'].isna())]
         .groupby('NaPlayer', as_index=False)
         .agg(
             xg_sum=('xg', 'sum'),
