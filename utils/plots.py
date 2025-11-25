@@ -457,7 +457,7 @@ def plot_goals_sunburst(df, team_name="Racing de Santander"):
     # Texto dentro de cada sector: etiqueta + nº de goles + %
     fig.update_traces(
         insidetextorientation='radial',
-        texttemplate='%{label}<br>%{value} goles<br>%{percentRoot:.1%}',
+        texttemplate='%{label}<br>%{percentRoot:.1%}',
         hovertemplate=(
             '<b>%{label}</b><br>' +
             'Porcentaje: %{percentRoot:.1%}<extra></extra>'
