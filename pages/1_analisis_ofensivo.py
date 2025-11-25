@@ -24,11 +24,66 @@ def asignar_pasillo(y):
         return 'Pasillo Exterior Izquierdo'
 
 df = pd.read_csv('possessions_with_shots.csv')
-teams = sorted(df['TeamName'].unique())
+
+# --- Corrección de Goles en Propia Puerta ---
+# Identificar goles en propia puerta. La condición own_goal != -1 es por si acaso, ya que notna() debería ser suficiente.
+own_goal_mask = (df['NaEventType'] == 'Goal') & (df['own_goal'].notna()) & (df['own_goal'] != -1)
+
+# Para esas filas, intercambiamos el equipo. Si el equipo del evento era el de casa, lo ponemos como el de fuera, y viceversa.
+df.loc[own_goal_mask, 'TeamName'] = np.where(
+    df.loc[own_goal_mask, 'TeamName'] == df.loc[own_goal_mask, 'NaHomeTeam'],
+    df.loc[own_goal_mask, 'NaAwayTeam'],
+    df.loc[own_goal_mask, 'NaHomeTeam']
+)
+
+# Hacemos lo mismo para el IdTeam
+df.loc[own_goal_mask, 'IdTeam'] = np.where(
+    df.loc[own_goal_mask, 'IdTeam'] == df.loc[own_goal_mask, 'IdHomeTeam'],
+    df.loc[own_goal_mask, 'IdAwayTeam'],
+    df.loc[own_goal_mask, 'IdHomeTeam']
+)
+
+# --- Filtros Dinámicos ---
+st.markdown("---")
+with st.expander("Filtros y Estadísticas", expanded=True):
+    col1, col2, col3, col4 = st.columns([2, 2, 2, 1.5])
+
+    with col1:
+        teams = sorted(df['TeamName'].unique())
+        team_name = st.selectbox('Selecciona un equipo:', teams)
+
+    # Hacemos una copia del dataframe para aplicar los filtros de la página
+    df_page_filtered = df[df['TeamName'] == team_name].copy()
+
+    with col2:
+        players = sorted(df_page_filtered['NaPlayer'].dropna().unique())
+        player_name = st.selectbox('Selección de Jugador', ["Todos"] + players)
+
+    with col3:
+        play_types = sorted(df_page_filtered['play_type'].dropna().unique())
+        play_type_filter = st.selectbox('Filtrar por tipo de jugada', ["Todos"] + play_types)
+
+    with col4:
+        goal_only_filter = st.checkbox('Solo posesiones con gol')
+
+# Aplicar filtros al dataframe
+if player_name != "Todos":
+    df_page_filtered = df_page_filtered[df_page_filtered['NaPlayer'] == player_name]
+
+if goal_only_filter:
+    goal_posesiones = df_page_filtered[df_page_filtered['NaEventType'] == 'Goal']['Posesion'].unique()
+    df_page_filtered = df_page_filtered[df_page_filtered['Posesion'].isin(goal_posesiones)]
+
+if play_type_filter != "Todos":
+    play_type_posesiones = df_page_filtered[df_page_filtered['play_type'] == play_type_filter]['Posesion'].unique()
+    df_page_filtered = df_page_filtered[df_page_filtered['Posesion'].isin(play_type_posesiones)]
+
+
+# --- Inicio del Análisis con el DF ya filtrado ---
 
 # 1. Excluir posesiones con córners
-posesiones_con_corner = df[df['corner_taken'].notna()]['Posesion'].unique()
-df_sin_corners = df[~df['Posesion'].isin(posesiones_con_corner)]
+posesiones_con_corner = df_page_filtered[df_page_filtered['corner_taken'].notna()]['Posesion'].unique()
+df_sin_corners = df_page_filtered[~df_page_filtered['Posesion'].isin(posesiones_con_corner)]
 
 # 2. Filtrar por eventos deseados y en campo rival
 eventos_deseados = [
@@ -75,30 +130,24 @@ def get_counts(df_events):
 conteo_inicio_liga = get_counts(inicio_events)
 conteo_fin_liga = get_counts(fin_events)
 
-# --- Interfaz de Streamlit ---
-st.header('Análisis de Progresión por Equipo')
-
-# Selección de equipo
-team_name = st.selectbox('Selecciona un equipo:', teams)
-
 if team_name:
     st.write(f"Mostrando análisis para **{team_name}**")
 
     st.header("Estadísticas de Finalización")
     
-    fig_players = plot_player_xg_xgot(df, team_name)
+    fig_players = plot_player_xg_xgot(df_page_filtered, team_name)
     if fig_players:
         st.plotly_chart(fig_players, use_container_width=True)
     else:
         st.warning(f"No se pudo generar el gráfico de xG/xGOT por jugador para {team_name}.")
 
-    fig_sunburst = plot_goals_sunburst(df, team_name)
+    fig_sunburst = plot_goals_sunburst(df_page_filtered, team_name)
     if fig_sunburst:
         st.plotly_chart(fig_sunburst, use_container_width=True)
     else:
         st.warning(f"No hay datos de goles para {team_name}.")
 
-    fig_dashboard = plot_offensive_dashboard(df, team_name)
+    fig_dashboard = plot_offensive_dashboard(df_page_filtered, team_name)
     if fig_dashboard:
         st.pyplot(fig_dashboard, use_container_width=True)
     else:
