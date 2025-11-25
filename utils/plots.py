@@ -399,7 +399,7 @@ def plot_goals_sunburst(df, team_name="Racing de Santander"):
 
     shot_location_map = {
         "Box": "Área",
-        "Small_box": "Área chica",
+        "Small_box": "Área Pequeña",
         "Out_of_box": "Fuera del área"
     }
 
