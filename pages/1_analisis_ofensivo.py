@@ -98,6 +98,39 @@ if play_type_display != "Todos":
     play_type_posesiones = df_page_filtered[df_page_filtered['play_type'].isin(original_values_to_filter)]['Posesion'].unique()
     df_page_filtered = df_page_filtered[df_page_filtered['Posesion'].isin(play_type_posesiones)]
 
+# --- Cálculo de Estadísticas ---
+st.markdown("---")
+st.subheader("Estadísticas Generales")
+
+# Filtrar eventos de tiro
+shot_events = ['Attempt Saved', 'Miss', 'Post', 'Goal']
+df_shots = df_page_filtered[df_page_filtered['NaEventType'].isin(shot_events)].copy()
+
+# Calcular estadísticas
+total_goals = int(df_page_filtered[df_page_filtered['NaEventType'] == 'Goal'].shape[0])
+total_shots = int(df_shots.shape[0])
+total_xg = df_shots['xG'].sum()
+total_xgot = df_shots['xGOT'].sum()
+
+# Evitar división por cero
+xg_per_shot = total_xg / total_shots if total_shots > 0 else 0
+xgot_per_shot = total_xgot / total_shots if total_shots > 0 else 0
+
+xg_conversion = total_xgot - total_xg
+avg_xg_conversion = xgot_per_shot - xg_per_shot
+
+# Mostrar estadísticas en columnas
+m_col1, m_col2, m_col3, m_col4 = st.columns(4)
+m_col1.metric("Goles Totales", f"{total_goals}")
+m_col2.metric("Tiros Totales", f"{total_shots}")
+m_col3.metric("xG Acumulado", f"{total_xg:.2f}")
+m_col4.metric("xG por Tiro", f"{xg_per_shot:.2f}")
+
+m_col5, m_col6, m_col7, m_col8 = st.columns(4)
+m_col5.metric("xGOT Acumulado", f"{total_xgot:.2f}")
+m_col6.metric("xGOT por Tiro", f"{xgot_per_shot:.2f}")
+m_col7.metric("xG Conversion (Total)", f"{xg_conversion:.2f}")
+m_col8.metric("xG Conversion (Promedio)", f"{avg_xg_conversion:.2f}")
 
 # --- Inicio del Análisis con el DF ya filtrado ---
 
