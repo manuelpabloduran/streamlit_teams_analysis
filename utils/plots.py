@@ -388,26 +388,26 @@ def plot_goals_sunburst(df, team_name="Racing de Santander"):
 
     # --- Diccionarios de mapeo a español (puedes ir ampliándolos) ---
     play_type_map = {
-        "Regular_play": "Juego en curso",
+        "Regular_play": "Jugada Regular",
         "Set_piece": "Balón parado",
         "Penalty": "Penalti",
         "Fast_break": "Transición rápida",
-        "Counter_attack": "Contraataque",
+        "From_corner": "Corner",
+        "Free_kick": "Balón parado",
+        "Throw-in_set_piece": "Saque de banda"
     }
 
     shot_location_map = {
         "Box": "Área",
         "Small_box": "Área chica",
-        "Out_of_box": "Fuera del área",
-        "Penalty_spot": "Punto de penalti",
+        "Out_of_box": "Fuera del área"
     }
 
     shot_part_map = {
         "Right_footed": "Pie derecho",
         "Left_footed": "Pie izquierdo",
         "Head": "Cabeza",
-        "Out_of_body": "Cuerpo",
-        "Other": "Otro",
+        "Other Body Part": "Otro",
     }
 
     required_cols = ['play_type', 'shot_location', 'shot_part']
