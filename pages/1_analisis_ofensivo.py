@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 from utils.plots import plot_team_progression_with_hist, plot_offensive_sequences, plot_player_xg_xgot, plot_goals_sunburst, plot_offensive_dashboard
 
+st.set_page_config(layout="wide")
+
 st.title('Análisis Ofensivo')
 
 # --- Carga y Preparación de Datos ---
@@ -126,4 +128,3 @@ if team_name:
         st.caption("Secuencias típicas entre pasillos en campo rival")
     else:
         st.warning(f"No hay datos de secuencias ofensivas para {team_name}.")
-
