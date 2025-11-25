@@ -518,7 +518,7 @@ def plot_offensive_dashboard(df, team_name):
 
 
     # Tiros a puerta: goles (mismos que df_goles) + Attempt Saved
-    df_saved = df_equipo[df_equipo['NaEventType'] == "Attempt Saved"].copy()
+    df_saved = df_equipo[(df_equipo['NaEventType'] == "Attempt Saved") & (df_equipo['blocked'] != -1)].copy()
 
     def scale_size(proba, min_size=50, max_size=300):
         return min_size + (max_size - min_size) * proba
