@@ -124,3 +124,4 @@ if team_name:
         st.caption("Secuencias típicas entre pasillos en campo rival")
     else:
         st.warning(f"No hay datos de secuencias ofensivas para {team_name}.")
+
