@@ -177,27 +177,60 @@ if team_name:
     else:
         st.warning(f"No se pudo generar el dashboard de finalización para {team_name}.")
 
-    st.header("Análisis de progresión por pasillo en campo rival")
+    with st.expander("Análisis de progresión por pasillo en campo rival", expanded=False):
+        # Para esta sección, usamos un dataframe filtrado solo por equipo, no por los otros filtros.
+        df_progression_analysis = df[df['TeamName'] == team_name]
+        
+        # 1. Excluir posesiones con córners
+        prog_posesiones_con_corner = df_progression_analysis[df_progression_analysis['corner_taken'].notna()]['Posesion'].unique()
+        prog_df_sin_corners = df_progression_analysis[~df_progression_analysis['Posesion'].isin(prog_posesiones_con_corner)]
 
-    # Generar y mostrar el gráfico de progresión
-    fig = plot_team_progression_with_hist(
-        df_analisis_progreso=df_filtrado,
-        team_name=team_name,
-        conteo_inicio=conteo_inicio_liga,
-        conteo_fin=conteo_fin_liga,
-        stats=stats_df
-    )
+        # 2. Filtrar por eventos deseados y en campo rival
+        prog_df_filtrado = prog_df_sin_corners[
+            (prog_df_sin_corners['NaEventType'].isin(eventos_deseados)) &
+            (prog_df_sin_corners['x'] > 50)
+        ].copy()
 
-    if fig:
-        st.pyplot(fig, use_container_width=True)
-        st.caption("Ingresos y finalizaciones por pasillo en campo rival")
-    else:
-        st.warning(f"No hay datos de progresión para {team_name}.")
+        # 3. Asignar pasillos y ordenar eventos
+        prog_df_filtrado['pasillo'] = prog_df_filtrado['y'].apply(asignar_pasillo)
+        prog_df_filtrado = prog_df_filtrado.sort_values(by=['Posesion', 'time_seconds'])
 
-    # Generar y mostrar el gráfico de secuencias
-    fig_sequences = plot_offensive_sequences(df_filtrado, team_name)
-    if fig_sequences:
-        st.pyplot(fig_sequences, use_container_width=True)
-        st.caption("Secuencias típicas entre pasillos en campo rival")
-    else:
-        st.warning(f"No hay datos de secuencias ofensivas para {team_name}.")
+        # 4. Calcular estadísticas
+        prog_grouped = prog_df_filtrado.groupby('Posesion')
+        prog_inicio_events = prog_grouped.first()
+        prog_fin_events = prog_grouped.last()
+
+        prog_stats_df = prog_grouped.agg(
+            TeamName=('TeamName', 'first'),
+            avg_pasillos=('pasillo', 'nunique'),
+            duration=('time_seconds', lambda x: x.max() - x.min()),
+            n_events=('time_seconds', 'count'),
+            width=('y', lambda x: x.max() - x.min())
+        ).groupby('TeamName').mean()
+
+        # 5. Calcular conteos de inicio y fin por pasillo
+        prog_conteo_inicio_liga = get_counts(prog_inicio_events)
+        prog_conteo_fin_liga = get_counts(prog_fin_events)
+
+        # Generar y mostrar el gráfico de progresión
+        fig = plot_team_progression_with_hist(
+            df_analisis_progreso=prog_df_filtrado,
+            team_name=team_name,
+            conteo_inicio=prog_conteo_inicio_liga,
+            conteo_fin=prog_conteo_fin_liga,
+            stats=prog_stats_df
+        )
+
+        if fig:
+            st.pyplot(fig, use_container_width=True)
+            st.caption("Ingresos y finalizaciones por pasillo en campo rival")
+        else:
+            st.warning(f"No hay datos de progresión para {team_name}.")
+
+        # Generar y mostrar el gráfico de secuencias
+        fig_sequences = plot_offensive_sequences(prog_df_filtrado, team_name)
+        if fig_sequences:
+            st.pyplot(fig_sequences, use_container_width=True)
+            st.caption("Secuencias típicas entre pasillos en campo rival")
+        else:
+            st.warning(f"No hay datos de secuencias ofensivas para {team_name}.")
