@@ -367,3 +367,32 @@ def plot_player_xg_xgot(df, team_name):
 )
 
     return fig
+
+def plot_goals_sunburst(df, team_name):
+    """
+    Crea un gráfico sunburst de los goles por tipo de jugada, ubicación y parte del cuerpo.
+    """
+    df_goles = df[(df['TeamName'] == team_name) & (df['NaEventType'] == 'Goal')].copy()
+
+    if df_goles.empty:
+        st.warning(f"⚠️ No hay goles para {team_name}.")
+        return None
+
+    # Asegurarse de que las columnas necesarias existen
+    required_cols = ['play_type', 'shot_location', 'shot_part']
+    if not all(col in df_goles.columns for col in required_cols):
+        st.error(f"El dataframe no contiene las columnas necesarias: {required_cols}")
+        return None
+
+    fig = px.sunburst(
+        df_goles,
+        path=['play_type', 'shot_location', 'shot_part'],
+        color='play_type',
+        color_discrete_sequence=px.colors.qualitative.Safe
+    )
+
+    fig.update_layout(
+        title=f'{team_name} – Goles por tipo de jugada, ubicación y parte del cuerpo'
+    )
+
+    return fig

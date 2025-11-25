@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from utils.plots import plot_team_progression_with_hist, plot_offensive_sequences, plot_player_xg_xgot
+from utils.plots import plot_team_progression_with_hist, plot_offensive_sequences, plot_player_xg_xgot, plot_goals_sunburst
 
 st.title('Análisis Ofensivo')
 
@@ -81,7 +81,25 @@ team_name = st.selectbox('Selecciona un equipo:', teams)
 
 if team_name:
     st.write(f"Mostrando análisis para **{team_name}**")
+
+    st.header("Estadísticas de Finalización")
     
+    col1, col2 = st.columns(2)
+
+    with col1:
+        fig_players = plot_player_xg_xgot(df, team_name)
+        if fig_players:
+            st.plotly_chart(fig_players, use_container_width=True)
+        else:
+            st.warning(f"No se pudo generar el gráfico de xG/xGOT por jugador para {team_name}.")
+
+    with col2:
+        fig_sunburst = plot_goals_sunburst(df, team_name)
+        if fig_sunburst:
+            st.plotly_chart(fig_sunburst, use_container_width=True)
+        else:
+            st.warning(f"No hay datos de goles para {team_name}.")
+
     st.header("Análisis de progresión por pasillo en campo rival")
 
     # Generar y mostrar el gráfico de progresión
@@ -106,10 +124,3 @@ if team_name:
         st.caption("Secuencias típicas entre pasillos en campo rival")
     else:
         st.warning(f"No hay datos de secuencias ofensivas para {team_name}.")
-
-    st.header("xG y xGOT por Jugador")
-    fig_players = plot_player_xg_xgot(df, team_name)
-    if fig_players:
-        st.plotly_chart(fig_players, use_container_width=True)
-    else:
-        st.warning(f"No se pudo generar el gráfico de xG/xGOT por jugador para {team_name}.")
