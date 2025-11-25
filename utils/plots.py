@@ -287,4 +287,77 @@ def plot_offensive_sequences(df_filtrado, team_name):
     
     return fig
 
+def plot_player_xg_xgot(df, team_name):
+    """
+    Crea un gráfico de barras agrupadas de xG y xGOT por jugador para un equipo específico.
+    """
+    df_equipo = df[df['TeamName'] == team_name]
+
+    if df_equipo.empty:
+        st.warning(f"⚠️ No hay datos para el equipo {team_name}.")
+        return None
+
+    shot_summary = (
+        df_equipo[df_equipo['NaEventType'].isin(['Attempt Saved', 'Miss', 'Out', 'Post', 'Goal'])]
+        .groupby('NaPlayer', as_index=False)
+        .agg(
+            xg_sum=('xg', 'sum'),
+            xgot_sum=('xgot', 'sum'),
+            shots=('NaEventType', 'size')
+        )
+    )
+
+    if shot_summary.empty:
+        st.warning(f"⚠️ No hay tiros para {team_name} con los filtros actuales.")
+        return None
+
+    shot_summary['player_label'] = (
+        shot_summary['NaPlayer'] + ' (' + shot_summary['shots'].astype(int).astype(str) + ' tiros)'
+    )
+
+    shot_summary = shot_summary.sort_values('xgot_sum', ascending=True)
+    shot_summary = shot_summary[shot_summary['xg_sum'] > 0]
+
+    if shot_summary.empty:
+        st.warning(f"⚠️ No hay jugadores con xG > 0 para {team_name}.")
+        return None
+
+    fig = go.Figure()
+
+    fig.add_bar(
+        name='xG',
+        x=shot_summary['xg_sum'],
+        y=shot_summary['player_label'],
+        orientation='h',
+        customdata=np.stack([shot_summary['shots']], axis=-1),
+        hovertemplate=(
+            'Jugador: %{y}<br>' +
+            'xG: %{x:.2f}<br>' +
+            'Tiros: %{customdata[0]}<extra></extra>'
+        )
+    )
+
+    fig.add_bar(
+        name='xGOT',
+        x=shot_summary['xgot_sum'],
+        y=shot_summary['player_label'],
+        orientation='h',
+        customdata=np.stack([shot_summary['shots']], axis=-1),
+        hovertemplate=(
+            'Jugador: %{y}<br>' +
+            'xGOT: %{x:.2f}<br>' +
+            'Tiros: %{customdata[0]}<extra></extra>'
+        )
+    )
+
+    fig.update_layout(
+        barmode='group',
+        xaxis_title='Total',
+        yaxis_title='Jugador',
+        title=f'{team_name} – xG y xGOT por jugador',
+        template='plotly_white',
+    )
+
+    return fig
+
 
