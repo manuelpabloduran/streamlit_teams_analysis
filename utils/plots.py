@@ -401,3 +401,188 @@ def plot_goals_sunburst(df, team_name):
     )
 
     return fig
+
+def plot_offensive_dashboard(df, team_name):
+    from PIL import Image
+    import os
+
+    df_equipo = df[df['TeamName'] == team_name]
+    # --- FILTRO GOLES A FAVOR ---
+    df_goles = df_equipo[
+        (df_equipo['NaEventType'] == 'Goal') &
+        (df_equipo['own_goal'] != -1)
+    ].copy()
+
+    if df_goles.empty:
+        st.warning(f"⚠️ No hay goles a favor para {team_name}.")
+        return None
+
+    # --- Marcamos si el gol fue de cabeza ---
+    df_goles['is_header'] = df_goles['head_info'].notna() & (df_goles['head_info'] != '')
+
+    # --- Escalar tamaño de burbuja según xGOT ---
+    max_xgot = df_goles['xgot'].max() if df_goles['xgot'].max() > 0 else 1.0
+    size_min = 20
+    size_max = 100
+
+    xgot_norm = df_goles['xgot'] / max_xgot
+    marker_sizes = size_min + (size_max - size_min) * xgot_norm
+
+    # ======================================================
+    # FIGURA CON 2 COLUMNAS
+    # ======================================================
+    fig, (ax_pitch, ax_goal) = plt.subplots(
+        1, 2, figsize=(16, 7)
+    )
+    fig.set_facecolor('#101820')
+
+    # ======================================================
+    # 1) IZQUIERDA: GOLES EN EL PITCH (últimos 30m)
+    # ======================================================
+    pitch = Pitch(
+        pitch_type='opta',
+        pitch_color='#22312b',
+        line_color='white',
+        linewidth=1.5
+    )
+    pitch.draw(ax=ax_pitch)
+
+    mask_header = df_goles['is_header']
+    df_head = df_goles[mask_header]
+    df_foot = df_goles[~mask_header]
+
+    sizes_head = marker_sizes[mask_header]
+    sizes_foot = marker_sizes[~mask_header]
+
+    # Goles de cabeza (azul)
+    pitch.scatter(
+        df_head['x'], df_head['y'],
+        s=sizes_head,
+        edgecolors='white',
+        linewidth=1.0,
+        alpha=0.7,
+        ax=ax_pitch,
+        zorder=3,
+        label='Cabeza',
+        c='#2196F3'
+    )
+
+    # Goles no de cabeza (verde)
+    pitch.scatter(
+        df_foot['x'], df_foot['y'],
+        s=sizes_foot,
+        edgecolors='white',
+        linewidth=1.0,
+        alpha=0.7,
+        ax=ax_pitch,
+        zorder=3,
+        label='Pie',
+        c='#4CAF50'
+    )
+
+    ax_pitch.set_xlim(70, 100)
+    ax_pitch.set_ylim(0, 100)
+
+    ax_pitch.legend(
+        loc='upper center',
+        bbox_to_anchor=(0.5, 1.03),
+        ncol=2,
+        frameon=True,
+        fontsize=9
+    )
+
+    ax_pitch.set_title(
+        f'Ubicación de Goles',
+        fontsize=14,
+        color='white',
+        pad=10
+    )
+
+    # ======================================================
+    # 2) DERECHA: DISTRIBUCIÓN EN EL ARCO (GOAL MOUTH)
+    # ======================================================
+    y_post1 = 45.2
+    y_post2 = 54.8
+    z_min = 0
+    z_max = 34.8
+
+    goal_img_path = "images/goal_fondo_2.jpg"
+    if os.path.exists(goal_img_path):
+        goal_img = Image.open(goal_img_path)
+        ax_goal.imshow(goal_img, extent=[y_post1, y_post2, z_min, z_max], aspect='auto')
+    else:
+        st.warning(f"Advertencia: No se encontró la imagen del arco en '{goal_img_path}'.")
+
+
+    # Tiros a puerta: goles (mismos que df_goles) + Attempt Saved
+    df_saved = df_equipo[df_equipo['NaEventType'] == "Attempt Saved"].copy()
+
+    def scale_size(proba, min_size=50, max_size=300):
+        return min_size + (max_size - min_size) * proba
+
+    # Split goles en cabeza vs no cabeza para el arco
+    df_goal_head = df_goles[df_goles['is_header']].copy()
+    df_goal_foot = df_goles[~df_goles['is_header']].copy()
+
+    if not df_goal_head.empty:
+        df_goal_head['size'] = df_goal_head['xgot'].apply(scale_size)
+    if not df_goal_foot.empty:
+        df_goal_foot['size'] = df_goal_foot['xgot'].apply(scale_size)
+    if not df_saved.empty:
+        df_saved['size'] = df_saved['xgot'].apply(scale_size)
+
+    # 🟦 Goles de cabeza (azul)
+    if not df_goal_head.empty:
+        ax_goal.scatter(
+            df_goal_head['Goal_mouth_y_co-ordinate'],
+            df_goal_head['Goal_mouth_z_co-ordinate'],
+            color='#2196F3',
+            label='Gol cabeza',
+            s=df_goal_head['size'],
+            edgecolors='black',
+            alpha=0.6
+        )
+
+    # 🟩 Goles no de cabeza (verde)
+    if not df_goal_foot.empty:
+        ax_goal.scatter(
+            df_goal_foot['Goal_mouth_y_co-ordinate'],
+            df_goal_foot['Goal_mouth_z_co-ordinate'],
+            color='#4CAF50',
+            label='Gol pie/otro',
+            s=df_goal_foot['size'],
+            edgecolors='black',
+            alpha=0.6
+        )
+
+    # 🟥 Tiros a puerta sin gol (Attempt Saved)
+    if not df_saved.empty:
+        ax_goal.scatter(
+            df_saved['Goal_mouth_y_co-ordinate'],
+            df_saved['Goal_mouth_z_co-ordinate'],
+            color='#E53935',
+            label='Tiro a puerta sin gol',
+            s=df_saved['size'] * 1.1,
+            edgecolors='black',
+            alpha=0.6
+        )
+
+    ax_goal.set_xlim(y_post1, y_post2)
+    ax_goal.set_ylim(z_min, z_max)
+    ax_goal.set_xticks([])
+    ax_goal.set_yticks([])
+
+    ax_goal.set_title(
+        'Distribución de tiros a puerta en el arco',
+        fontsize=14,
+        color='white',
+        pad=10
+    )
+    ax_goal.legend()
+
+    ax_goal.invert_xaxis()
+
+    plt.tight_layout()
+
+    return fig
+

@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from utils.plots import plot_team_progression_with_hist, plot_offensive_sequences, plot_player_xg_xgot, plot_goals_sunburst
+from utils.plots import plot_team_progression_with_hist, plot_offensive_sequences, plot_player_xg_xgot, plot_goals_sunburst, plot_offensive_dashboard
 
 st.title('Análisis Ofensivo')
 
@@ -95,6 +95,12 @@ if team_name:
         st.plotly_chart(fig_sunburst, use_container_width=True)
     else:
         st.warning(f"No hay datos de goles para {team_name}.")
+
+    fig_dashboard = plot_offensive_dashboard(df, team_name)
+    if fig_dashboard:
+        st.pyplot(fig_dashboard, use_container_width=True)
+    else:
+        st.warning(f"No se pudo generar el dashboard de finalización para {team_name}.")
 
     st.header("Análisis de progresión por pasillo en campo rival")
 
