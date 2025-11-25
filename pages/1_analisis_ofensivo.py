@@ -144,6 +144,7 @@ if team_name:
     fig_sunburst = plot_goals_sunburst(df_page_filtered, team_name)
     if fig_sunburst:
         st.plotly_chart(fig_sunburst, use_container_width=True)
+    
     else:
         st.warning(f"No hay datos de goles para {team_name}.")
 

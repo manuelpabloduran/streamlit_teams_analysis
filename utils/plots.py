@@ -368,39 +368,113 @@ def plot_player_xg_xgot(df, team_name):
 
     return fig
 
-def plot_goals_sunburst(df, team_name):
+import plotly.express as px
+import streamlit as st
+
+def plot_goals_sunburst(df, team_name="Racing de Santander"):
     """
-    Crea un gráfico sunburst de los goles por tipo de jugada, ubicación y parte del cuerpo.
+    Sunburst de goles por tipo de jugada, ubicación y parte del cuerpo (en español),
+    mostrando nº de goles y % sobre el total.
     """
-    df_goles = df[(df['TeamName'] == team_name) &
-                  (df['NaEventType'] == 'Goal') &
-                  (df['own_goal'] != -1)].copy()
+    df_goles = df[
+        (df['TeamName'] == team_name) &
+        (df['NaEventType'] == 'Goal') &
+        (df['own_goal'] != -1)
+    ].copy()
 
     if df_goles.empty:
         st.warning(f"⚠️ No hay goles para {team_name}.")
         return None
 
-    # Asegurarse de que las columnas necesarias existen
+    # --- Diccionarios de mapeo a español (puedes ir ampliándolos) ---
+    play_type_map = {
+        "Regular_play": "Juego en curso",
+        "Set_piece": "Balón parado",
+        "Penalty": "Penalti",
+        "Fast_break": "Transición rápida",
+        "Counter_attack": "Contraataque",
+    }
+
+    shot_location_map = {
+        "Box": "Área",
+        "Small_box": "Área chica",
+        "Out_of_box": "Fuera del área",
+        "Penalty_spot": "Punto de penalti",
+    }
+
+    shot_part_map = {
+        "Right_footed": "Pie derecho",
+        "Left_footed": "Pie izquierdo",
+        "Head": "Cabeza",
+        "Out_of_body": "Cuerpo",
+        "Other": "Otro",
+    }
+
     required_cols = ['play_type', 'shot_location', 'shot_part']
     if not all(col in df_goles.columns for col in required_cols):
         st.error(f"El dataframe no contiene las columnas necesarias: {required_cols}")
         return None
 
-    # Rellenar valores nulos para evitar error en sunburst
-    df_goles = df_goles[required_cols].fillna("Otro")
+    # --- Crear columnas "lindas" en español ---
+    def _nice(col, mapping):
+        # 1) aplicar diccionario
+        # 2) si no existe en dict, reemplazar "_" por espacio y capitalizar
+        return (
+            df_goles[col]
+            .map(mapping)
+            .fillna(
+                df_goles[col]
+                .fillna("Otro")  # por si viniera NaN
+                .str.replace("_", " ")
+                .str.strip()
+                .str.capitalize()
+            )
+        )
 
+    df_goles['play_type_es'] = _nice('play_type', play_type_map)
+    df_goles['shot_location_es'] = _nice('shot_location', shot_location_map)
+    df_goles['shot_part_es'] = _nice('shot_part', shot_part_map)
+
+    # --- Agrupar para tener nº de goles por combinación ---
+    grouped = (
+        df_goles
+        .groupby(['play_type_es', 'shot_location_es', 'shot_part_es'], as_index=False)
+        .size()
+        .rename(columns={'size': 'n_goles'})
+    )
+
+    total_goles = grouped['n_goles'].sum()
+
+    # --- Sunburst ---
     fig = px.sunburst(
-        df_goles,
-        path=['play_type', 'shot_location', 'shot_part'],
-        color='play_type',
+        grouped,
+        path=['play_type_es', 'shot_location_es', 'shot_part_es'],
+        values='n_goles',
+        color='play_type_es',
         color_discrete_sequence=px.colors.qualitative.Safe
     )
 
+    # Texto dentro de cada sector: etiqueta + nº de goles + %
+    fig.update_traces(
+        insidetextorientation='radial',
+        texttemplate='%{label}<br>%{value} goles<br>%{percentRoot:.1%}',
+        hovertemplate=(
+            '<b>%{label}</b><br>' +
+            'Goles: %{value} de ' + str(total_goles) + '<br>' +
+            'Porcentaje: %{percentRoot:.1%}<extra></extra>'
+        )
+    )
+
     fig.update_layout(
-        title=f'{team_name} – Goles por tipo de jugada, ubicación y parte del cuerpo'
+        title=f'{team_name} – Goles por tipo de jugada, ubicación y parte del cuerpo',
+        margin=dict(t=60, l=0, r=0, b=0),
+        paper_bgcolor='#101820',
+        plot_bgcolor='#101820',
+        font_color='white'
     )
 
     return fig
+
 
 def plot_offensive_dashboard(df, team_name):
     from PIL import Image
