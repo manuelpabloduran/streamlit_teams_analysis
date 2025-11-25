@@ -32,7 +32,7 @@ max_date = df['DtGame'].max()
 
 st.markdown("---")
 with st.expander("Filtros y Estadísticas", expanded=True):
-    date_range = st.date_input(
+    date_range = st.slider(
         "Selecciona un rango de fechas",
         value=(min_date, max_date),
         min_value=min_date,
