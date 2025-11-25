@@ -359,5 +359,3 @@ def plot_player_xg_xgot(df, team_name):
     )
 
     return fig
-
-
