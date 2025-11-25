@@ -25,6 +25,19 @@ def asignar_pasillo(y):
 
 df = pd.read_csv('possessions_with_shots.csv')
 
+# Corrección de goles en propia puerta
+own_goal_condition = (df['NaEventType'] == 'Goal') & (df['own_goal'].notna())
+df['TeamName'] = np.where(
+    own_goal_condition,
+    np.where(df['TeamName'] == df['NaHomeTeam'], df['NaAwayTeam'], df['NaHomeTeam']),
+    df['TeamName']
+)
+df['IdTeam'] = np.where(
+    own_goal_condition,
+    np.where(df['IdTeam'] == df['IdHomeTeam'], df['IdAwayTeam'], df['IdHomeTeam']),
+    df['IdTeam']
+)
+
 # --- Conversión y filtro de fecha ---
 df['DtGame'] = pd.to_datetime(df['DtGame']).dt.date
 min_date = df['DtGame'].min()
