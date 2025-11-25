@@ -455,30 +455,32 @@ def plot_offensive_dashboard(df, team_name):
     sizes_foot = marker_sizes[~mask_header]
 
     # Goles de cabeza (azul)
-    pitch.scatter(
-        df_head['x'], df_head['y'],
-        s=sizes_head,
-        edgecolors='white',
-        linewidth=1.0,
-        alpha=0.7,
-        ax=ax_pitch,
-        zorder=3,
-        label='Cabeza',
-        c='#2196F3'
-    )
+    if not df_head.empty:
+        pitch.scatter(
+            df_head['x'], df_head['y'],
+            s=sizes_head,
+            edgecolors='white',
+            linewidth=1.0,
+            alpha=0.7,
+            ax=ax_pitch,
+            zorder=3,
+            label='Cabeza',
+            c='#2196F3'
+        )
 
     # Goles no de cabeza (verde)
-    pitch.scatter(
-        df_foot['x'], df_foot['y'],
-        s=sizes_foot,
-        edgecolors='white',
-        linewidth=1.0,
-        alpha=0.7,
-        ax=ax_pitch,
-        zorder=3,
-        label='Pie',
-        c='#4CAF50'
-    )
+    if not df_foot.empty:
+        pitch.scatter(
+            df_foot['x'], df_foot['y'],
+            s=sizes_foot,
+            edgecolors='white',
+            linewidth=1.0,
+            alpha=0.7,
+            ax=ax_pitch,
+            zorder=3,
+            label='Pie',
+            c='#4CAF50'
+        )
 
     ax_pitch.set_xlim(70, 100)
     ax_pitch.set_ylim(0, 100)
@@ -578,7 +580,10 @@ def plot_offensive_dashboard(df, team_name):
         color='white',
         pad=10
     )
-    ax_goal.legend()
+    
+    # Solo mostrar la leyenda si hay algo que mostrar
+    if not df_goal_head.empty or not df_goal_foot.empty or not df_saved.empty:
+        ax_goal.legend()
 
     ax_goal.invert_xaxis()
 
