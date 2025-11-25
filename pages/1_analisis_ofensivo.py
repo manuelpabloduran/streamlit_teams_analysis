@@ -25,29 +25,26 @@ def asignar_pasillo(y):
 
 df = pd.read_csv('possessions_with_shots.csv')
 
-# --- Corrección de Goles en Propia Puerta ---
-# Identificar goles en propia puerta. La condición own_goal != -1 es por si acaso, ya que notna() debería ser suficiente.
-own_goal_mask = (df['NaEventType'] == 'Goal') & (df['own_goal'].notna()) & (df['own_goal'] != -1)
+# --- Conversión y filtro de fecha ---
+df['DtGame'] = pd.to_datetime(df['DtGame']).dt.date
+min_date = df['DtGame'].min()
+max_date = df['DtGame'].max()
 
-# Para esas filas, intercambiamos el equipo. Si el equipo del evento era el de casa, lo ponemos como el de fuera, y viceversa.
-df.loc[own_goal_mask, 'TeamName'] = np.where(
-    df.loc[own_goal_mask, 'TeamName'] == df.loc[own_goal_mask, 'NaHomeTeam'],
-    df.loc[own_goal_mask, 'NaAwayTeam'],
-    df.loc[own_goal_mask, 'NaHomeTeam']
-)
-
-# Hacemos lo mismo para el IdTeam
-df.loc[own_goal_mask, 'IdTeam'] = np.where(
-    df.loc[own_goal_mask, 'IdTeam'] == df.loc[own_goal_mask, 'IdHomeTeam'],
-    df.loc[own_goal_mask, 'IdAwayTeam'],
-    df.loc[own_goal_mask, 'IdHomeTeam']
-)
-
-# --- Filtros Dinámicos ---
 st.markdown("---")
 with st.expander("Filtros y Estadísticas", expanded=True):
+    date_range = st.date_input(
+        "Selecciona un rango de fechas",
+        value=(min_date, max_date),
+        min_value=min_date,
+        max_value=max_date,
+    )
+    if len(date_range) == 2:
+        start_date, end_date = date_range
+        # Aseguramos que el df se filtre por el rango de fechas
+        df = df[(df['DtGame'] >= start_date) & (df['DtGame'] <= end_date)]
+    
     col1, col2, col3, col4 = st.columns([2, 2, 2, 1.5])
-
+    
     with col1:
         teams = sorted(df['TeamName'].unique())
         team_name = st.selectbox('Selecciona un equipo:', teams)
