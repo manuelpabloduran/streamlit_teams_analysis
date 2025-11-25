@@ -573,7 +573,7 @@ def plot_offensive_dashboard(df, team_name):
     ax_goal.set_yticks([])
 
     ax_goal.set_title(
-        'Distribución de tiros a puerta en el arco',
+        'Distribución de tiros a puerta',
         fontsize=14,
         color='white',
         pad=10
