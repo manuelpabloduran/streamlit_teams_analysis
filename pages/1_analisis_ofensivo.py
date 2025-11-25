@@ -109,8 +109,8 @@ df_shots = df_page_filtered[df_page_filtered['NaEventType'].isin(shot_events)].c
 # Calcular estadísticas
 total_goals = int(df_page_filtered[df_page_filtered['NaEventType'] == 'Goal'].shape[0])
 total_shots = int(df_shots.shape[0])
-total_xg = df_shots['xG'].sum()
-total_xgot = df_shots['xGOT'].sum()
+total_xg = df_shots['xg'].sum()
+total_xgot = df_shots['xgot'].sum()
 
 # Evitar división por cero
 xg_per_shot = total_xg / total_shots if total_shots > 0 else 0
