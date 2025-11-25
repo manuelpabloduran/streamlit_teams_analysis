@@ -7,15 +7,6 @@ st.title('Análisis Ofensivo')
 
 # --- Carga y Preparación de Datos ---
 @st.cache_data
-def load_and_prepare_data(url):
-    df = pd.read_csv(url)
-    # !!! IMPORTANTE: Reemplaza 'location_x' y 'location_y' con los nombres de columna correctos para las coordenadas de eventos en tu CSV.
-    if 'location_x' in df.columns and 'location_y' in df.columns:
-        df = df.rename(columns={'location_x': 'x', 'location_y': 'y'})
-    else:
-        if 'x' not in df.columns: df['x'] = np.nan
-        if 'y' not in df.columns: df['y'] = np.nan
-    return df
 
 # Definir la función para asignar pasillos
 def asignar_pasillo(y):
@@ -30,7 +21,7 @@ def asignar_pasillo(y):
     else: # y > 79
         return 'Pasillo Exterior Izquierdo'
 
-df = load_and_prepare_data('possessions_with_shots.csv')
+df = pd.read_csv('possessions_with_shots.csv')
 teams = sorted(df['TeamName'].unique())
 
 # 1. Excluir posesiones con córners
