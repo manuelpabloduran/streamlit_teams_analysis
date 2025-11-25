@@ -485,13 +485,14 @@ def plot_offensive_dashboard(df, team_name):
     ax_pitch.set_xlim(70, 100)
     ax_pitch.set_ylim(0, 100)
 
-    ax_pitch.legend(
-        loc='upper center',
-        bbox_to_anchor=(0.5, 1.03),
-        ncol=2,
-        frameon=True,
-        fontsize=9
-    )
+    if not df_head.empty or not df_foot.empty:
+        ax_pitch.legend(
+            loc='upper center',
+            bbox_to_anchor=(0.5, 1.03),
+            ncol=2,
+            frameon=True,
+            fontsize=9
+        )
 
     ax_pitch.set_title(
         f'Ubicación de Goles',
