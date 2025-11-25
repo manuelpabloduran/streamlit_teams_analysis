@@ -84,21 +84,17 @@ if team_name:
 
     st.header("Estadísticas de Finalización")
     
-    col1, col2 = st.columns(2)
+    fig_players = plot_player_xg_xgot(df, team_name)
+    if fig_players:
+        st.plotly_chart(fig_players, use_container_width=True)
+    else:
+        st.warning(f"No se pudo generar el gráfico de xG/xGOT por jugador para {team_name}.")
 
-    with col1:
-        fig_players = plot_player_xg_xgot(df, team_name)
-        if fig_players:
-            st.plotly_chart(fig_players, use_container_width=True)
-        else:
-            st.warning(f"No se pudo generar el gráfico de xG/xGOT por jugador para {team_name}.")
-
-    with col2:
-        fig_sunburst = plot_goals_sunburst(df, team_name)
-        if fig_sunburst:
-            st.plotly_chart(fig_sunburst, use_container_width=True)
-        else:
-            st.warning(f"No hay datos de goles para {team_name}.")
+    fig_sunburst = plot_goals_sunburst(df, team_name)
+    if fig_sunburst:
+        st.plotly_chart(fig_sunburst, use_container_width=True)
+    else:
+        st.warning(f"No hay datos de goles para {team_name}.")
 
     st.header("Análisis de progresión por pasillo en campo rival")
 

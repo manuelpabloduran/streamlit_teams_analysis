@@ -384,6 +384,9 @@ def plot_goals_sunburst(df, team_name):
         st.error(f"El dataframe no contiene las columnas necesarias: {required_cols}")
         return None
 
+    # Rellenar valores nulos para evitar error en sunburst
+    df_goles[required_cols] = df_goles[required_cols].fillna("Desconocido")
+
     fig = px.sunburst(
         df_goles,
         path=['play_type', 'shot_location', 'shot_part'],
