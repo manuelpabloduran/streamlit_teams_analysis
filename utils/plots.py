@@ -372,7 +372,9 @@ def plot_goals_sunburst(df, team_name):
     """
     Crea un gráfico sunburst de los goles por tipo de jugada, ubicación y parte del cuerpo.
     """
-    df_goles = df[(df['TeamName'] == team_name) & (df['NaEventType'] == 'Goal')].copy()
+    df_goles = df[(df['TeamName'] == team_name) &
+                  (df['NaEventType'] == 'Goal') &
+                  (df['own_goal'] != -1)].copy()
 
     if df_goles.empty:
         st.warning(f"⚠️ No hay goles para {team_name}.")
@@ -385,7 +387,7 @@ def plot_goals_sunburst(df, team_name):
         return None
 
     # Rellenar valores nulos para evitar error en sunburst
-    df_goles = df_goles[~df_goles[required_cols].isna()]
+    df_goles = df_goles[required_cols].fillna("Otro")
 
     fig = px.sunburst(
         df_goles,
