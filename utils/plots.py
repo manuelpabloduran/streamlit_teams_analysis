@@ -385,7 +385,7 @@ def plot_goals_sunburst(df, team_name):
         return None
 
     # Rellenar valores nulos para evitar error en sunburst
-    df_goles[required_cols] = df_goles[required_cols].fillna("Desconocido")
+    df_goles = df_goles[~df_goles[required_cols].isna()]
 
     fig = px.sunburst(
         df_goles,
