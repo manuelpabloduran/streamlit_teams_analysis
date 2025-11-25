@@ -298,7 +298,7 @@ def plot_player_xg_xgot(df, team_name):
         return None
 
     shot_summary = (
-        df_equipo[(df_equipo['NaEventType'].isin(['Attempt Saved', 'Miss', 'Post', 'Goal'])) & (~df_equipo['xg'].isna())]
+        df_equipo[(df_equipo['NaEventType'].isin(['Attempt Saved', 'Miss', 'Post', 'Goal']))]
         .groupby('NaPlayer', as_index=False)
         .agg(
             xg_sum=('xg', 'sum'),
@@ -356,6 +356,14 @@ def plot_player_xg_xgot(df, team_name):
         yaxis_title='Jugador',
         title=f'{team_name} – xG y xGOT por jugador',
         template='plotly_white',
+        height=max(400, 25 * len(shot_summary))  # 25 px por jugador aprox
     )
+
+    # Forzar que se vean todas las etiquetas del eje Y
+    fig.update_yaxes(
+        tickmode='linear',
+        dtick=1,          # un tick por categoría
+        automargin=True   # deja margen para que entren los nombres largos
+)
 
     return fig
