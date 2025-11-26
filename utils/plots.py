@@ -1505,7 +1505,7 @@ def plot_area_entry_by_corridor(
         "Pasillo Central": (37, 63),
         "Pasillo Interior Izquierdo": (63, 79),
         "Pasillo Interior Derecho": (21, 37),
-        "Pasillo Exterior Izquierdo": (79, 101),
+        "Pasillo Exterior Izquierdo": (79, 100),
         "Pasillo Exterior Derecho": (0, 21),
     }
 
