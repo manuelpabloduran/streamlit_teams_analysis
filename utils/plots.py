@@ -1058,7 +1058,7 @@ def plot_pass_matrix(df, team_name, min_x=0):
                     ha='center', va='center', color=text_color, size=10)
 
     # Estilizar el gráfico
-    ax.set_title(f"Matriz de Pases - {team_name}" + (f" (x > {min_x})" if min_x > 0 else ""), color='white', fontsize=16)
+    ax.set_title(f"Matriz de Pases - {team_name}", color='white', fontsize=16)
     ax.set_xlabel("Receptor", color='white', fontsize=12)
     ax.set_ylabel("Pasador", color='white', fontsize=12)
     plt.xticks(rotation=45, ha='right', color='white')
