@@ -256,7 +256,7 @@ if team_name:
     col_xg_matrix1, col_xg_matrix2 = st.columns(2)
 
     with col_xg_matrix1:
-        st.subheader("Matriz de Pases de xG (Todo el campo)")
+        st.subheader("xG Chain - Todo el campo")
         fig_pass_xg_matrix_full = plot_pass_xg_matrix(df_page_filtered, team_name, min_x=0)
         if fig_pass_xg_matrix_full:
             st.pyplot(fig_pass_xg_matrix_full, use_container_width=True)
@@ -264,7 +264,7 @@ if team_name:
             st.warning(f"No se pudo generar la matriz de pases de xG para {team_name}.")
 
     with col_xg_matrix2:
-        st.subheader("Matriz de Pases de xG (Último Tercio)")
+        st.subheader("xG Chain - Último Tercio")
         fig_pass_xg_matrix_final_third = plot_pass_xg_matrix(df_page_filtered, team_name, min_x=66.66)
         if fig_pass_xg_matrix_final_third:
             st.pyplot(fig_pass_xg_matrix_final_third, use_container_width=True)
