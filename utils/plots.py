@@ -1432,9 +1432,9 @@ def plot_area_entry_passes(
     fig, ax = pitch.draw(figsize=(12, 7))
     #fig.set_facecolor("#EFE9E6")
 
-    categories = ["Cutback", "Dividido", "Through ball",
-                  "In-swinger", "Out-swing", "Long ball",
-                  "Lay-off", "Other"]
+    categories = ["Cutback", "Dividido", "Pase Profundo",
+                  "Centro Cerrado", "Centro Abierto", "Balón Largo",
+                  "Apoyo", "Other"]
 
     for key in categories:
         dfk = dfp[dfp["assist_type"] == key]
@@ -1505,7 +1505,7 @@ def plot_area_entry_by_corridor(
         "Pasillo Central": (37, 63),
         "Pasillo Interior Izquierdo": (63, 79),
         "Pasillo Interior Derecho": (21, 37),
-        "Pasillo Exterior Izquierdo": (79, 100),
+        "Pasillo Exterior Izquierdo": (79, 101),
         "Pasillo Exterior Derecho": (0, 21),
     }
 
