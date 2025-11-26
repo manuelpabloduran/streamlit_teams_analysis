@@ -1001,14 +1001,27 @@ def plot_pass_matrix(df, team_name, min_x=0):
     all_players = sorted(list(set(pass_matrix.index) | set(pass_matrix.columns)))
     pass_matrix = pass_matrix.reindex(index=all_players, columns=all_players, fill_value=0)
 
-    # 3. Calcular totales
+    # 3. Ordenar la matriz por pases totales dados
+    # Se calcula la suma de pases dados por cada jugador
+    total_passes_given = pass_matrix.sum(axis=1).sort_values(ascending=False)
+    
+    # Se obtiene el orden de los jugadores
+    sorted_players = total_passes_given.index.tolist()
+    
+    # Se reordena la matriz (filas y columnas)
+    pass_matrix = pass_matrix.loc[sorted_players, sorted_players]
+
+    # 4. Calcular totales (después de ordenar)
     pass_matrix['Total Pases Dados'] = pass_matrix.sum(axis=1)
     pass_matrix.loc['Total Pases Recibidos'] = pass_matrix.sum(axis=0)
-    # El total de la esquina es la suma de la columna de totales (o la fila)
     pass_matrix.loc['Total Pases Recibidos', 'Total Pases Dados'] = pass_matrix['Total Pases Dados'].sum()
 
+    # 5. Preparar para el heatmap (corregir escala de color)
+    # Se extrae la matriz de jugadores sin los totales para definir la escala de color
+    player_pass_matrix = pass_matrix.iloc[:-1, :-1]
+    vmax = player_pass_matrix.max().max() # El valor máximo sin contar los totales
 
-    # 4. Crear el heatmap con Seaborn
+    # 6. Crear el heatmap con Seaborn
     fig, ax = plt.subplots(figsize=(16, 12))
     fig.set_facecolor('#101820')
     
@@ -1020,7 +1033,8 @@ def plot_pass_matrix(df, team_name, min_x=0):
         linewidths=.5,
         ax=ax,
         cbar=False, # Ocultar la barra de color
-        annot_kws={"color": "white", "size": 10}
+        annot_kws={"color": "white", "size": 10},
+        vmax=vmax # Se establece el máximo para la escala de colores
     )
 
     # Estilizar el gráfico
