@@ -1128,10 +1128,10 @@ def plot_pass_xg_matrix(df, team_name, min_x=0):
     sorted_players = total_xg_given.index.tolist()
     pass_xg_matrix = pass_xg_matrix.loc[sorted_players, sorted_players]
 
-    # 5. Calcular totales
+    # 5. Calcular totales y ajustar etiquetas
     pass_xg_matrix['Total xG Generado'] = pass_xg_matrix.sum(axis=1)
-    pass_xg_matrix.loc['Total xG Recibido'] = pass_xg_matrix.sum(axis=0)
-    pass_xg_matrix.loc['Total xG Recibido', 'Total xG Generado'] = pass_xg_matrix['Total xG Generado'].sum()
+    pass_xg_matrix.loc['Total Recepciones - xG Generado'] = pass_xg_matrix.sum(axis=0)
+    pass_xg_matrix.loc['Total Recepciones - xG Generado', 'Total xG Generado'] = np.nan # Eliminar el valor de la esquina
 
     # 6. Preparar y crear el heatmap
     player_pass_xg_matrix = pass_xg_matrix.iloc[:-1, :-1]
@@ -1180,4 +1180,3 @@ def plot_pass_xg_matrix(df, team_name, min_x=0):
 
     plt.tight_layout()
     return fig
-
