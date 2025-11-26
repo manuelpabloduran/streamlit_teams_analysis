@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from utils.plots import plot_team_progression_with_hist, plot_offensive_sequences, plot_player_xg_xgot, plot_goals_sunburst, plot_offensive_dashboard, plot_goal_actions_bar
-from streamlit_plotly_events import streamlit_plotly_events
+from streamlit_plotly_events import plotly_events
 
 st.set_page_config(layout="wide")
 
@@ -211,7 +211,7 @@ if team_name:
     col_sun, col_actions = st.columns(2)
 
     with col_sun:
-        fig_sunburst = plot_goals_sunburst(df_page_filtered, team_name)
+        fig_sunburst, df_goles_es = plot_goals_sunburst(df_page_filtered, team_name)
         if fig_sunburst:
             st.plotly_chart(fig_sunburst, use_container_width=True)
         else:

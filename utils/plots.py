@@ -472,7 +472,7 @@ def plot_goals_sunburst(df, team_name="Racing de Santander"):
         font_color='white'
     )
 
-    return fig
+    return fig, df_goles
 
 
 def plot_offensive_dashboard(df, team_name):
