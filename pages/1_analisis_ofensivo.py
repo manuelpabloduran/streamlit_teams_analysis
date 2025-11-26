@@ -39,14 +39,19 @@ df['IdTeam'] = np.where(
     df['IdTeam']
 )
 
-# --- Cálculo de variables adicionales ---
+# --- Cálculo de variables adicionales (a nivel de evento) ---
 df['dx'] = df['end_x'] - df['x']
 df['dy'] = df['end_y'] - df['y']
+df['Angle'] = np.arctan2(df['dy'], df['dx']).mod(2 * np.pi)
 
-df['Angle'] = np.arctan2(df['dy'], df['dx'])
+# --- Cálculo de variables adicionales (a nivel de posesión) ---
+# Duración de la posesión
+possession_duration = df.groupby('Posesion')['time_seconds'].transform(lambda x: x.max() - x.min())
+possession_counts = df.groupby('Posesion')['time_seconds'].transform('count')
+df['possession_duration'] = possession_duration.where(possession_counts > 1, np.nan)
 
-# Normalizar a [0, 2π)
-df['Angle'] = df['Angle'].mod(2 * np.pi)
+# xG de la posesión
+df['possession_xg'] = df.groupby('Posesion')['xg'].transform('sum')
 
 
 df['iniciacion_area'] = np.where(((df["x"] >= 84) &
@@ -111,6 +116,42 @@ with st.expander("Filtros y Estadísticas", expanded=True):
         start_date, end_date = date_range
         # Aseguramos que el df se filtre por el rango de fechas
         df = df[(df['DtGame'] >= start_date) & (df['DtGame'] <= end_date)]
+
+    # --- Nuevos filtros de duración y xG de posesión ---
+    # Filtrar NAs para obtener rangos correctos
+    duration_filtered = df['possession_duration'].dropna()
+    min_duration = duration_filtered.min() if not duration_filtered.empty else 0.0
+    max_duration = duration_filtered.max() if not duration_filtered.empty else 1.0
+
+    if max_duration > min_duration:
+        duration_range = st.slider(
+            "Filtra por duración de la posesión (segundos)",
+            value=(min_duration, max_duration),
+            min_value=min_duration,
+            max_value=max_duration,
+            step=0.1,
+            format="%.1f"
+        )
+        # Aplicar filtro (incluyendo los que no tienen duración)
+        df = df[
+            (df['possession_duration'].between(duration_range[0], duration_range[1])) |
+            (df['possession_duration'].isna())
+        ]
+
+    xg_filtered = df['possession_xg'].dropna()
+    min_xg = xg_filtered.min() if not xg_filtered.empty else 0.0
+    max_xg = xg_filtered.max() if not xg_filtered.empty else 0.0
+
+    if max_xg > 0:
+        xg_range = st.slider(
+            "Filtra por xG de la posesión",
+            value=(min_xg, max_xg),
+            min_value=min_xg,
+            max_value=max_xg,
+            step=0.01,
+            format="%.2f"
+        )
+        df = df[df['possession_xg'].between(xg_range[0], xg_range[1])]
     
     col1, col2, col3, col4 = st.columns([2, 2, 2, 1.5])
     
