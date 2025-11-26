@@ -1004,8 +1004,8 @@ def plot_pass_matrix(df, team_name, min_x=0):
     # 3. Calcular totales
     pass_matrix['Total Pases Dados'] = pass_matrix.sum(axis=1)
     pass_matrix.loc['Total Pases Recibidos'] = pass_matrix.sum(axis=0)
-    # El total de la esquina es la suma de una fila/columna (deben coincidir)
-    pass_matrix.loc['Total Pases Recibidos', 'Total Pases Dados'] = pass_matrix.loc['Total Pases Recibidos', :-1].sum()
+    # El total de la esquina es la suma de la columna de totales (o la fila)
+    pass_matrix.loc['Total Pases Recibidos', 'Total Pases Dados'] = pass_matrix['Total Pases Dados'].sum()
 
 
     # 4. Crear el heatmap con Seaborn
