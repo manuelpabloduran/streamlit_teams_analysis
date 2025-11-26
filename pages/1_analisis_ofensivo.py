@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from utils.plots import plot_team_progression_with_hist, plot_offensive_sequences, plot_player_xg_xgot, plot_goals_sunburst, plot_offensive_dashboard, plot_goal_actions_bar
+from utils.plots import plot_team_progression_with_hist, plot_offensive_sequences, plot_player_xg_xgot, plot_goals_sunburst, plot_offensive_dashboard, plot_goal_actions_bar, plot_pass_matrix
 from streamlit_plotly_events import plotly_events
 
 st.set_page_config(layout="wide")
@@ -230,6 +230,13 @@ if team_name:
     else:
         st.warning(f"No se pudo generar el dashboard de finalización para {team_name}.")
 
+    st.header("Progresiones")
+    fig_pass_matrix = plot_pass_matrix(df_page_filtered, team_name)
+    if fig_pass_matrix:
+        st.pyplot(fig_pass_matrix, use_container_width=True)
+    else:
+        st.warning(f"No se pudo generar la matriz de pases para {team_name}.")
+
     with st.expander("Análisis de progresión por pasillo en campo rival", expanded=False):
         # Para esta sección, usamos un dataframe filtrado solo por equipo, no por los otros filtros.
         df_progression_analysis = df[df['TeamName'] == team_name]
@@ -287,4 +294,3 @@ if team_name:
             st.caption("Secuencias típicas entre pasillos en campo rival")
         else:
             st.warning(f"No hay datos de secuencias ofensivas para {team_name}.")
-

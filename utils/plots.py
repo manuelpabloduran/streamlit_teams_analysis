@@ -974,3 +974,69 @@ def plot_offensive_dashboard(df, team_name):
 
     return fig
 
+def plot_pass_matrix(df, team_name, min_x=0):
+    """
+    Crea una matriz de pases (heatmap) para un equipo, con opción de filtrar por zona.
+    """
+    # 1. Filtrar datos
+    mask = (
+        (df['TeamName'] == team_name) &
+        (df['NaEventType'] == 'Pass') &
+        (df['Outcome'] == 1) &
+        (df['receiving_player'].notna()) &
+        (df['receiving_player'] != '') &
+        (df['receiving_player'] != 'null') &
+        (df['x'] > min_x)
+    )
+    df_passes = df[mask].copy()
+
+    if df_passes.empty:
+        st.warning(f"⚠️ No hay datos de pases para {team_name} con los filtros aplicados (min_x={min_x}).")
+        return None
+
+    # 2. Crear la matriz de pases
+    pass_matrix = pd.crosstab(df_passes['NaPlayer'], df_passes['receiving_player'])
+
+    # Asegurarse de que todos los jugadores estén en filas y columnas
+    all_players = sorted(list(set(pass_matrix.index) | set(pass_matrix.columns)))
+    pass_matrix = pass_matrix.reindex(index=all_players, columns=all_players, fill_value=0)
+
+    # 3. Calcular totales
+    pass_matrix['Total Pases Dados'] = pass_matrix.sum(axis=1)
+    pass_matrix.loc['Total Pases Recibidos'] = pass_matrix.sum(axis=0)
+    # El total de la esquina es la suma de una fila/columna (deben coincidir)
+    pass_matrix.loc['Total Pases Recibidos', 'Total Pases Dados'] = pass_matrix.loc['Total Pases Recibidos', :-1].sum()
+
+
+    # 4. Crear el heatmap con Seaborn
+    fig, ax = plt.subplots(figsize=(16, 12))
+    fig.set_facecolor('#101820')
+    
+    sns.heatmap(
+        pass_matrix,
+        annot=True,
+        fmt=".0f",
+        cmap="viridis",
+        linewidths=.5,
+        ax=ax,
+        cbar=False, # Ocultar la barra de color
+        annot_kws={"color": "white", "size": 10}
+    )
+
+    # Estilizar el gráfico
+    ax.set_title(f"Matriz de Pases - {team_name}" + (f" (x > {min_x})" if min_x > 0 else ""), color='white', fontsize=16)
+    ax.set_xlabel("Receptor", color='white', fontsize=12)
+    ax.set_ylabel("Pasador", color='white', fontsize=12)
+    plt.xticks(rotation=45, ha='right', color='white')
+    plt.yticks(rotation=0, color='white')
+
+    # Resaltar los totales
+    ax.get_xticklabels()[-1].set_weight('bold')
+    ax.get_yticklabels()[-1].set_weight('bold')
+    ax.get_xticklabels()[-1].set_color('yellow')
+    ax.get_yticklabels()[-1].set_color('yellow')
+
+
+    plt.tight_layout()
+    return fig
+
