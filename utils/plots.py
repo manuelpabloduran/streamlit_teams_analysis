@@ -1074,3 +1074,110 @@ def plot_pass_matrix(df, team_name, min_x=0):
     plt.tight_layout()
     return fig
 
+def plot_pass_xg_matrix(df, team_name, min_x=0):
+    """
+    Crea una matriz de pases ponderada por el xG de la posesión.
+    """
+    # 1. Preparar datos: Asignar xG de la posesión a todos sus eventos
+    df_team = df[df['TeamName'] == team_name].copy()
+    
+    # Obtener el xG por posesión (solo las que terminan en tiro)
+    possession_xg = df_team.loc[df_team['xg'].notna()].groupby('Posesion')['xg'].sum()
+    
+    if possession_xg.empty:
+        st.warning(f"⚠️ No hay posesiones con xG para {team_name}.")
+        return None
+
+    # Asignar el xG a cada evento de la posesión correspondiente
+    df_team['possession_xg'] = df_team['Posesion'].map(possession_xg)
+
+    # 2. Filtrar solo los pases en posesiones con xG
+    mask = (
+        (df_team['NaEventType'] == 'Pass') &
+        (df_team['Outcome'] == 1) &
+        (df_team['receiving_player'].notna()) &
+        (df_team['receiving_player'] != '') &
+        (df_team['receiving_player'] != 'null') &
+        (df_team['possession_xg'].notna()) & # Solo pases en posesiones con xG
+        (df_team['x'] > min_x)
+    )
+    df_passes_xg = df_team[mask].copy()
+
+    # Eliminar duplicados para no sumar el xG de la posesión por cada pase
+    df_passes_xg = df_passes_xg.drop_duplicates(subset=['Posesion', 'NaPlayer', 'receiving_player'])
+
+    if df_passes_xg.empty:
+        st.warning(f"⚠️ No hay datos de pases en posesiones con xG para {team_name} con los filtros aplicados (min_x={min_x}).")
+        return None
+
+    # 3. Crear la matriz de pases de xG
+    pass_xg_matrix = pd.pivot_table(
+        df_passes_xg,
+        values='possession_xg',
+        index='NaPlayer',
+        columns='receiving_player',
+        aggfunc='sum',
+        fill_value=0
+    )
+
+    # 4. Asegurarse de que todos los jugadores estén en filas y columnas y ordenar
+    all_players = sorted(list(set(pass_xg_matrix.index) | set(pass_xg_matrix.columns)))
+    pass_xg_matrix = pass_xg_matrix.reindex(index=all_players, columns=all_players, fill_value=0)
+
+    total_xg_given = pass_xg_matrix.sum(axis=1).sort_values(ascending=False)
+    sorted_players = total_xg_given.index.tolist()
+    pass_xg_matrix = pass_xg_matrix.loc[sorted_players, sorted_players]
+
+    # 5. Calcular totales
+    pass_xg_matrix['Total xG Generado'] = pass_xg_matrix.sum(axis=1)
+    pass_xg_matrix.loc['Total xG Recibido'] = pass_xg_matrix.sum(axis=0)
+    pass_xg_matrix.loc['Total xG Recibido', 'Total xG Generado'] = pass_xg_matrix['Total xG Generado'].sum()
+
+    # 6. Preparar y crear el heatmap
+    player_pass_xg_matrix = pass_xg_matrix.iloc[:-1, :-1]
+    vmax = player_pass_xg_matrix.max().max()
+
+    fig, ax = plt.subplots(figsize=(16, 12))
+    fig.set_facecolor('#101820')
+    
+    sns.heatmap(
+        pass_xg_matrix,
+        annot=False,
+        fmt=".2f",
+        cmap="viridis",
+        linewidths=.5,
+        ax=ax,
+        cbar=False,
+        vmax=vmax
+    )
+
+    # 7. Añadir anotaciones con formato de 2 decimales
+    norm = plt.Normalize(vmin=0, vmax=vmax if vmax > 0 else 1)
+
+    for i in range(pass_xg_matrix.shape[0]):
+        for j in range(pass_xg_matrix.shape[1]):
+            value = pass_xg_matrix.iloc[i, j]
+            if value == 0: continue # No anotar ceros
+
+            color = plt.get_cmap("viridis")(norm(np.clip(value, 0, vmax)))
+            luminance = (0.299 * color[0] + 0.587 * color[1] + 0.114 * color[2])
+            text_color = "white" if luminance < 0.5 else "black"
+
+            ax.text(j + 0.5, i + 0.5, f'{value:.2f}',
+                    ha='center', va='center', color=text_color, size=9)
+
+    # 8. Estilizar el gráfico
+    ax.set_title(f"Matriz de Pases de xG - {team_name}" + (f" (x > {min_x})" if min_x > 0 else ""), color='white', fontsize=16)
+    ax.set_xlabel("Receptor", color='white', fontsize=12)
+    ax.set_ylabel("Pasador", color='white', fontsize=12)
+    plt.xticks(rotation=45, ha='right', color='white')
+    plt.yticks(rotation=0, color='white')
+
+    ax.get_xticklabels()[-1].set_weight('bold')
+    ax.get_yticklabels()[-1].set_weight('bold')
+    ax.get_xticklabels()[-1].set_color('yellow')
+    ax.get_yticklabels()[-1].set_color('yellow')
+
+    plt.tight_layout()
+    return fig
+

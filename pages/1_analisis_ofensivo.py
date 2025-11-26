@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from utils.plots import plot_team_progression_with_hist, plot_offensive_sequences, plot_player_xg_xgot, plot_goals_sunburst, plot_offensive_dashboard, plot_goal_actions_bar, plot_pass_matrix
+from utils.plots import plot_team_progression_with_hist, plot_offensive_sequences, plot_player_xg_xgot, plot_goals_sunburst, plot_offensive_dashboard, plot_goal_actions_bar, plot_pass_matrix, plot_pass_xg_matrix
 from streamlit_plotly_events import plotly_events
 
 st.set_page_config(layout="wide")
@@ -243,12 +243,33 @@ if team_name:
             st.warning(f"No se pudo generar la matriz de pases para {team_name}.")
 
     with col_matrix2:
-        st.subheader("Matriz de Pases (Último Tercio) - Progresión con Finalización")
+        st.subheader("Matriz de Pases (Último Tercio)")
         fig_pass_matrix_final_third = plot_pass_matrix(df_page_filtered, team_name, min_x=66.66)
         if fig_pass_matrix_final_third:
             st.pyplot(fig_pass_matrix_final_third, use_container_width=True)
         else:
             st.warning(f"No se pudo generar la matriz de pases en último tercio para {team_name}.")
+
+    st.markdown("---")
+    st.header("Pases Clave (xG)")
+    
+    col_xg_matrix1, col_xg_matrix2 = st.columns(2)
+
+    with col_xg_matrix1:
+        st.subheader("Matriz de Pases de xG (Todo el campo)")
+        fig_pass_xg_matrix_full = plot_pass_xg_matrix(df_page_filtered, team_name, min_x=0)
+        if fig_pass_xg_matrix_full:
+            st.pyplot(fig_pass_xg_matrix_full, use_container_width=True)
+        else:
+            st.warning(f"No se pudo generar la matriz de pases de xG para {team_name}.")
+
+    with col_xg_matrix2:
+        st.subheader("Matriz de Pases de xG (Último Tercio)")
+        fig_pass_xg_matrix_final_third = plot_pass_xg_matrix(df_page_filtered, team_name, min_x=66.66)
+        if fig_pass_xg_matrix_final_third:
+            st.pyplot(fig_pass_xg_matrix_final_third, use_container_width=True)
+        else:
+            st.warning(f"No se pudo generar la matriz de pases de xG en último tercio para {team_name}.")
 
     with st.expander("Análisis de progresión por pasillo en campo rival", expanded=False):
         # Para esta sección, usamos un dataframe filtrado solo por equipo, no por los otros filtros.
