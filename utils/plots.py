@@ -9,6 +9,7 @@ import streamlit as st
 from scipy.interpolate import make_interp_spline
 from collections import defaultdict
 import matplotlib.patheffects as pe
+from matplotlib.lines import Line2D
 
 # Definición de pasillos_y para plot_team_progression_with_hist
 pasillos_y = {
@@ -1226,7 +1227,9 @@ def plot_area_entries_team(
         ok = (
             (d["x"] >= 50) &                              # al menos en campo rival
             (d["corner_taken"] != "-1") &                 # excluir corners (ajusta si cambia)
+            (d["corner_taken"].isna()) &
             (d["Outcome"].eq(1)) &                        # acción exitosa
+            (d["NaEventType"] == "Pass") &
             (d["end_x"] >= box_end_x) &                   # termina dentro del área en x
             (d["end_y"] >= box_end_y_low) &
             (d["end_y"] <= box_end_y_high) &              # termina dentro del área en y
@@ -1335,3 +1338,320 @@ def plot_area_entries_team(
         "x_edges": x_edges,
         "y_edges": y_edges,
     }
+
+def plot_area_entry_passes(
+    df,
+    team_name,
+    title_prefix="Ingresos al área por tipo de pase",
+    only_assists=False,
+    box_min_x=83.0,
+    box_y_low=21.1,
+    box_y_high=78.9,
+):
+    """
+    Dibuja los pases que suponen un ingreso al área rival para un equipo dado,
+    coloreados por tipo (cutback, through ball, etc.).
+
+    df: DataFrame con eventos (formato Opta, x/y/end_x/end_y en [0,100])
+    team_name: nombre del equipo (columna df['TeamName'])
+    only_assists: si True, solo incluye pases marcados como 'assist' no nulos.
+    """
+
+    dfp = df.copy()
+    dfp = dfp[
+        (dfp["TeamName"] == team_name) &
+        (dfp["NaEventType"] == "Pass") &
+        (dfp["corner_taken"].isna()) &
+        (dfp["Outcome"] == 1)                               # pase correcto
+    ].copy()
+
+    if only_assists:
+        dfp = dfp[dfp["assist"].notna()].copy()
+
+    # Asegurar numéricos
+    for c in ["x", "y", "end_x", "end_y"]:
+        if c in dfp.columns:
+            dfp[c] = pd.to_numeric(dfp[c], errors="coerce")
+
+    # ---- Filtro geométrico: pases que ENTRAN al área ----
+    # Termina dentro del área
+    in_box_end = (
+        (dfp["end_x"] >= box_min_x) &
+        (dfp["end_y"] >= box_y_low) &
+        (dfp["end_y"] <= box_y_high)
+    )
+    # No empieza ya dentro del área
+    from_outside_box = ~(
+        (dfp["x"] >= box_min_x) &
+        (dfp["y"] >= box_y_low) &
+        (dfp["y"] <= box_y_high)
+    )
+
+    dfp = dfp[in_box_end & from_outside_box].copy()
+
+    if dfp.empty:
+        print(f"⚠️ No hay ingresos al área para {team_name} con los filtros actuales.")
+        return None, dfp
+
+    # --------- Categoría por prioridad (una sola por pase) ----------
+    def notna_col(df_local, col):
+        return (
+            df_local[col].notna()
+            if col in df_local.columns
+            else pd.Series(False, index=df_local.index)
+        )
+
+    is_cutback  = (dfp["cutback"] == 1)   if "cutback" in dfp.columns  else pd.Series(False, index=dfp.index)
+    is_dividido = (dfp["dividido"] == 1)  if "dividido" in dfp.columns else pd.Series(False, index=dfp.index)
+    is_through  = notna_col(dfp, "through_ball")
+    is_in       = notna_col(dfp, "in_swinger")
+    is_out      = notna_col(dfp, "out_swing")
+    is_longball = notna_col(dfp, "long_ball")
+    is_layoff   = notna_col(dfp, "lay_off")
+
+    dfp["assist_type"] = np.select(
+        [is_cutback, is_dividido, is_through, is_in, is_out, is_longball, is_layoff],
+        ["Cutback", "Dividido", "Through ball", "In-swinger", "Out-swing", "Long ball", "Lay-off"],
+        default="Other",
+    )
+
+    # --------- Colores ----------
+    COLORS = {
+        "Cutback":      "#C2185B",  # magenta
+        "Dividido":     "#5555AA",  # azul grisáceo
+        "Through ball": "#1E90FF",  # azul
+        "In-swinger":   "#2ECC71",  # verde
+        "Out-swing":    "#1976D2",  # azul más oscuro
+        "Long ball":    "#8D6E63",  # marrón
+        "Lay-off":      "#FF8C00",  # naranja
+        "Other":        "#8E44AD",  # violeta
+    }
+
+    # --------- Plot ----------
+    pitch = Pitch(pitch_type="opta", stripe=False)
+    fig, ax = pitch.draw(figsize=(12, 7))
+    #fig.set_facecolor("#EFE9E6")
+
+    categories = ["Cutback", "Dividido", "Through ball",
+                  "In-swinger", "Out-swing", "Long ball",
+                  "Lay-off", "Other"]
+
+    for key in categories:
+        dfk = dfp[dfp["assist_type"] == key]
+        if not dfk.empty:
+            # trayectorias
+            pitch.lines(
+                dfk["x"], dfk["y"], dfk["end_x"], dfk["end_y"],
+                color=COLORS[key],
+                comet=True,
+                transparent=True,
+                alpha_start=0.10,
+                alpha_end=0.30,
+                ax=ax,
+            )
+            # punto de entrada al área
+            pitch.scatter(
+                dfk["end_x"], dfk["end_y"],
+                ax=ax,
+                facecolor="white",
+                edgecolor=COLORS[key],
+                linewidth=1.2,
+                s=24,
+                zorder=4,
+            )
+
+    # Leyenda
+    legend_items = [
+        Line2D([0], [0], color=COLORS[k], lw=4, label=k)
+        for k in categories
+    ]
+    ax.legend(
+        handles=legend_items,
+        loc="lower left",
+        frameon=True,
+        facecolor="white",
+        edgecolor="none",
+        fontsize=11,
+    )
+
+    extra = " (solo asistencias)" if only_assists else ""
+    ax.set_title(
+        f"{title_prefix}{extra} — {team_name}\nIngresos al área: N={len(dfp)}",
+        fontsize=14,
+    )
+
+    plt.tight_layout()
+
+    return
+
+def plot_area_entry_by_corridor(
+    df,
+    team_name,
+    title_prefix="Ingresos al área por pasillo de origen",
+    box_min_x=83.0,
+    box_y_low=21,
+    box_y_high=79,
+):
+    """
+    Dibuja los pases que suponen un ingreso al área rival para un equipo dado,
+    coloreados según el PASILLO de origen (en función de y inicial).
+
+    df: DataFrame con eventos (formato Opta, x/y/end_x/end_y en [0,100])
+    team_name: nombre del equipo (columna df['TeamName'])
+    """
+
+    # --- Definición de pasillos ---
+    pasillos_y = {
+        "Pasillo Central": (37, 63),
+        "Pasillo Interior Izquierdo": (63, 79),
+        "Pasillo Interior Derecho": (21, 37),
+        "Pasillo Exterior Izquierdo": (79, 100),
+        "Pasillo Exterior Derecho": (0, 21),
+    }
+
+    # Colores para cada pasillo
+    PASILLO_COLORS = {
+        "Pasillo Central":            "#FDD835",  # amarillo
+        "Pasillo Interior Izquierdo": "#43A047",  # verde
+        "Pasillo Interior Derecho":   "#1E88E5",  # azul
+        "Pasillo Exterior Izquierdo": "#e53935",  # rojo
+        "Pasillo Exterior Derecho":   "#8E24AA",  # violeta
+    }
+
+    # --- Filtro base: pases correctos del equipo que terminan entrando al área ---
+    dfp = df.copy()
+    dfp = dfp[
+        (dfp["TeamName"] == team_name) &
+        (dfp["NaEventType"] == "Pass") &
+        (dfp["corner_taken"].isna()) &
+        (dfp["Outcome"] == 1)        # pase correcto
+    ].copy()
+
+    # Asegurar numéricos
+    for c in ["x", "y", "end_x", "end_y"]:
+        if c in dfp.columns:
+            dfp[c] = pd.to_numeric(dfp[c], errors="coerce")
+
+    # Termina dentro del área
+    in_box_end = (
+        (dfp["end_x"] >= box_min_x) &
+        (dfp["end_y"] >= box_y_low) &
+        (dfp["end_y"] <= box_y_high)
+    )
+    # No empieza ya dentro del área
+    from_outside_box = ~(
+        (dfp["x"] >= box_min_x) &
+        (dfp["y"] >= box_y_low) &
+        (dfp["y"] <= box_y_high)
+    )
+
+    dfp = dfp[in_box_end & from_outside_box].copy()
+
+    if dfp.empty:
+        print(f"⚠️ No hay ingresos al área para {team_name} con los filtros actuales.")
+        return None, dfp
+
+    # --- Asignar pasillo según y de origen ---
+    def assign_corridor(y):
+        for name, (y_min, y_max) in pasillos_y.items():
+            if (y >= y_min) and (y < y_max):
+                return name
+        return None
+
+    dfp["corridor"] = dfp["y"].apply(assign_corridor)
+    dfp = dfp[dfp["corridor"].notna()].copy()
+
+    if dfp.empty:
+        print(f"⚠️ No hay ingresos con pasillo identificable para {team_name}.")
+        return None, dfp
+
+    # --- Plot pitch ---
+    pitch = Pitch(pitch_type="opta", stripe=False)
+    fig, ax = pitch.draw(figsize=(12, 7))
+    # fig.set_facecolor("#EFE9E6")
+
+    # --- Dibujar pases por pasillo ---
+    corridor_order = list(pasillos_y.keys())  # mantiene el orden deseado
+
+    counts_corridor = {}
+
+    for corridor_name in corridor_order:
+        dfk = dfp[dfp["corridor"] == corridor_name]
+        counts_corridor[corridor_name] = len(dfk)
+        if dfk.empty:
+            continue
+
+        color = PASILLO_COLORS.get(corridor_name, "#000000")
+
+        # trayectorias
+        pitch.lines(
+            dfk["x"], dfk["y"], dfk["end_x"], dfk["end_y"],
+            color=color,
+            comet=True,
+            transparent=True,
+            alpha_start=0.10,
+            alpha_end=0.30,
+            ax=ax,
+        )
+        # punto de entrada al área
+        pitch.scatter(
+            dfk["end_x"], dfk["end_y"],
+            ax=ax,
+            facecolor="white",
+            edgecolor=color,
+            linewidth=1.2,
+            s=24,
+            zorder=4,
+        )
+
+    # --- Líneas finas separando pasillos y mitad de campo ---
+    # Líneas horizontales (límites de pasillos)
+    for _, (y_min, y_max) in pasillos_y.items():
+        # dibujamos la línea en el límite superior de cada pasillo
+        ax.axhline(y=y_min, color="grey", linestyle="--", linewidth=0.7, alpha=0.6)
+    # Último límite (100) por estética
+    ax.axhline(y=100, color="grey", linestyle="--", linewidth=0.7, alpha=0.6)
+
+    # Línea vertical en mitad de campo (x=50)
+    ax.axvline(x=50, color="grey", linestyle="-", linewidth=1.0, alpha=0.8)
+
+    # --- Contadores en campo propio (x < 50) por pasillo ---
+    for corridor_name in corridor_order:
+        y_min, y_max = pasillos_y[corridor_name]
+        y_mid = (y_min + y_max) / 2
+        count = counts_corridor.get(corridor_name, 0)
+        # Los ponemos en x=10 (lado propio), puedes ajustar
+        ax.text(
+            10,
+            y_mid,
+            f"{count} ingresos",
+            ha="left",
+            va="center",
+            fontsize=11,
+            color="black",
+            bbox=dict(facecolor="white", alpha=0.7, edgecolor="none", boxstyle="round,pad=0.3"),
+            zorder=5,
+        )
+
+    # --- Leyenda de colores por pasillo ---
+    legend_items = [
+        Line2D([0], [0], color=PASILLO_COLORS[name], lw=4, label=name)
+        for name in corridor_order
+    ]
+    ax.legend(
+        handles=legend_items,
+        loc="lower right",
+        frameon=True,
+        facecolor="white",
+        edgecolor="none",
+        fontsize=10,
+    )
+
+    total_entries = len(dfp)
+    ax.set_title(
+        f"{title_prefix} — {team_name}\nIngresos al área: N={total_entries}",
+        fontsize=14,
+    )
+
+    plt.tight_layout()
+    return
