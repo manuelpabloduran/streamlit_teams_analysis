@@ -1025,17 +1025,42 @@ def plot_pass_matrix(df, team_name, min_x=0):
     fig, ax = plt.subplots(figsize=(16, 12))
     fig.set_facecolor('#101820')
     
+    # Dibujar el heatmap SIN anotaciones primero
     sns.heatmap(
         pass_matrix,
-        annot=True,
+        annot=False, # Se quitan las anotaciones automáticas
         fmt=".0f",
-        cmap="viridis_r",
+        cmap="viridis",
         linewidths=.5,
         ax=ax,
-        cbar=False, # Ocultar la barra de color
-        annot_kws={"color": "white", "size": 10},
-        vmax=vmax # Se establece el máximo para la escala de colores
+        cbar=False,
+        vmax=vmax
     )
+
+    # 7. Añadir anotaciones con color de texto adaptativo
+    # Normalizar la matriz para obtener valores de 0 a 1 para el colormap
+    norm_pass_matrix = (pass_matrix - pass_matrix.min().min()) / (vmax - pass_matrix.min().min())
+
+    for i in range(pass_matrix.shape[0]):
+        for j in range(pass_matrix.shape[1]):
+            value = pass_matrix.iloc[i, j]
+            # Obtener el color de la celda del colormap
+            # Usamos la matriz normalizada para encontrar el color correcto
+            # Clamp el valor normalizado para evitar errores si un total excede vmax
+            norm_val = np.clip(norm_pass_matrix.iloc[i, j], 0, 1)
+            color = plt.get_cmap("viridis")(norm_val)
+            
+            # Decidir el color del texto basado en la luminosidad del fondo
+            # La fórmula de luminosidad es (0.299*R + 0.587*G + 0.114*B)
+            luminance = (0.299 * color[0] + 0.587 * color[1] + 0.114 * color[2])
+            text_color = "white" if luminance < 0.5 else "black"
+            
+            # Para los totales, forzamos el color a blanco porque el fondo es oscuro
+            if i == pass_matrix.shape[0] - 1 or j == pass_matrix.shape[1] - 1:
+                text_color = "white"
+
+            ax.text(j + 0.5, i + 0.5, f'{int(value)}',
+                    ha='center', va='center', color=text_color, size=10)
 
     # Estilizar el gráfico
     ax.set_title(f"Matriz de Pases - {team_name}" + (f" (x > {min_x})" if min_x > 0 else ""), color='white', fontsize=16)
