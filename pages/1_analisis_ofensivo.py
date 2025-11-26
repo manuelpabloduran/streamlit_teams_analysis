@@ -49,9 +49,11 @@ df['Angle'] = np.arctan2(df['dy'], df['dx']).mod(2 * np.pi)
 possession_duration = df.groupby('Posesion')['time_seconds'].transform(lambda x: x.max() - x.min())
 possession_counts = df.groupby('Posesion')['time_seconds'].transform('count')
 df['possession_duration'] = possession_duration.where(possession_counts > 1, np.nan)
+df['possession_duration'] = df['possession_duration'].clip(upper=100)
 
 # xG de la posesión
 df['possession_xg'] = df.groupby('Posesion')['xg'].transform('sum')
+df['possession_xg'] = df['possession_xg'].clip(upper=1)
 
 
 df['iniciacion_area'] = np.where(((df["x"] >= 84) &
