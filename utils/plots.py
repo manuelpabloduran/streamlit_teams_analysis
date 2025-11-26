@@ -1029,7 +1029,7 @@ def plot_pass_matrix(df, team_name, min_x=0):
         pass_matrix,
         annot=True,
         fmt=".0f",
-        cmap="viridis",
+        cmap="viridis_r",
         linewidths=.5,
         ax=ax,
         cbar=False, # Ocultar la barra de color
