@@ -1465,6 +1465,7 @@ def plot_area_entry_passes(
         Line2D([0], [0], color=COLORS[k], lw=4, label=k)
         for k in categories
     ]
+    
     ax.legend(
         handles=legend_items,
         loc="lower left",
@@ -1482,7 +1483,7 @@ def plot_area_entry_passes(
 
     plt.tight_layout()
 
-    return
+    return fig
 
 def plot_area_entry_by_corridor(
     df,
@@ -1654,4 +1655,4 @@ def plot_area_entry_by_corridor(
     )
 
     plt.tight_layout()
-    return
+    return fig
