@@ -1482,7 +1482,7 @@ def plot_area_entry_passes(
 
     plt.tight_layout()
 
-    return
+    return fig
 
 def plot_area_entry_by_corridor(
     df,
@@ -1654,4 +1654,4 @@ def plot_area_entry_by_corridor(
     )
 
     plt.tight_layout()
-    return
+    return fig
