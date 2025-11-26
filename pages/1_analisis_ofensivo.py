@@ -213,12 +213,41 @@ if team_name:
     with col_sun:
         fig_sunburst, df_goles_es = plot_goals_sunburst(df_page_filtered, team_name)
         if fig_sunburst:
-            st.plotly_chart(fig_sunburst, use_container_width=True)
+            selected_points = plotly_events(
+                fig_sunburst,
+                click_event=True,
+                hover_event=False,
+                select_event=False,
+                key="sunburst_click"
+            )
         else:
             st.warning(f"No hay datos de goles para {team_name}.")
+    
+    # =======================
+    # Armamos el df para el bar chart
+    # =======================
+    df_for_bar = df_page_filtered.copy()
+
+    if selected_points and df_goles_es is not None:
+        # label sobre el que se hizo click en el sunburst
+        label_clicked = selected_points[0]["label"]
+
+        # En df_goles_es tenemos play_type_es, shot_location_es, shot_part_es
+        mask = (
+            (df_goles_es["play_type_es"] == label_clicked) |
+            (df_goles_es["shot_location_es"] == label_clicked) |
+            (df_goles_es["shot_part_es"] == label_clicked)
+        )
+
+        goles_sel = df_goles_es[mask]
+
+        if not goles_sel.empty:
+            # filtramos el df original a las posesiones de esos goles
+            pos_sel = goles_sel["Posesion"].unique()
+            df_for_bar = df_page_filtered[df_page_filtered["Posesion"].isin(pos_sel)].copy()
 
     with col_actions:
-        fig_actions = plot_goal_actions_bar(df_page_filtered, team_name)
+        fig_actions = plot_goal_actions_bar(df_for_bar, team_name)
         if fig_actions:
             st.plotly_chart(fig_actions, use_container_width=True)
         else:
