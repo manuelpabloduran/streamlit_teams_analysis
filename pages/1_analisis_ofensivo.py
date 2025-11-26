@@ -39,6 +39,61 @@ df['IdTeam'] = np.where(
     df['IdTeam']
 )
 
+# --- Cálculo de variables adicionales ---
+df['dx'] = df['end_x'] - df['x']
+df['dy'] = df['end_y'] - df['y']
+
+df['Angle'] = np.arctan2(df['dy'], df['dx'])
+
+# Normalizar a [0, 2π)
+df['Angle'] = df['Angle'].mod(2 * np.pi)
+
+
+df['iniciacion_area'] = np.where(((df["x"] >= 84) &
+                                                 (df["y"] <= 81) &
+                                                 (df["y"] >= 19)), 1, 0)
+
+df['finalizacion_area'] = np.where(((df["end_x"] >= 84) &
+                                                 (df["end_y"] <= 81) &
+                                                 (df["end_y"] >= 19)), 1, 0)
+
+df['pase_peligroso_al_area'] = np.where(((df["iniciacion_area"] == 0) &
+                                                       (df["end_x"] >= 84) &
+                                                       (df["end_y"] <= 81) &
+                                                       (df["end_y"] >= 19)), 1, 0)
+
+# AGREGAMOS CUTBACKS AL ANÁLISIS
+df['cutback'] = np.where(((df["NaEventType"]=="Pass") &
+                            (df["finalizacion_area"]==1) &
+                            (df["x"]>80) &
+                            (df["y"]<=37) &
+                            (df["Angle"]>1.57) &
+                            (df["Angle"]<3.14)) |
+                            ((df["NaEventType"]=="Pass") &
+                             (df["finalizacion_area"]==1) &
+                             (df["chipped"].isna()) &
+                             (df["outcome"]==1) &
+                             (df["x"]>80) &
+                             (df["y"]>=63) &
+                             (df["Angle"]>3.14) &
+                             (df["Angle"]<4.71)), 1, 0)
+
+df['dividido'] = np.where(((df["NaEventType"]=="Pass") &
+                                         (df["finalizacion_area"]==1) &
+                                         (df["x"]>80) &
+                                         (df["y"]<=37) &
+                                         (df["Angle"]>0) &
+                                         (df["Angle"]<1.57)) |
+                            ((df["NaEventType"]=="Pass") &
+                             (df["finalizacion_area"]==1) &
+                             (df["chipped"].isna()) &
+                             (df["outcome"]==1) &
+                             (df["x"]>80) &
+                             (df["y"]>=63) &
+                             (df["Angle"]>4.71) &
+                             (df["Angle"]<6.28)), 1, 0)
+
+
 # --- Conversión y filtro de fecha ---
 df['DtGame'] = pd.to_datetime(df['DtGame']).dt.date
 min_date = df['DtGame'].min()

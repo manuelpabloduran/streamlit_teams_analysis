@@ -698,6 +698,8 @@ def summarize_goal_possessions(df, team_name):
             "1 vs 1": (g['1_on_1'] == 1).any(),
             "A un toque": (g['First_Touch'] == -1).any(),
             "No asistido": (g['Individual_Play'] == 1).any(),
+            "Cutback": (g['cutback'] == 1).any(),
+            "Pase Dividido": (g['dividido'] == 1).any(),
             "Panenka": (g['Panenka'] == -1).any(),
             "Desviado": (g['Deflection'] == -1).any(),
             "Recuperación rápida tras pérdida": (g['counterpress_5s_flag'] == 1).any(),
@@ -1240,6 +1242,7 @@ def plot_area_entries_team(
 
     # Si no hay entradas, devolvemos figura vacía agradable
     fig, ax = plt.subplots(figsize=figsize)
+    fig.set_facecolor(bg_color)
     pitch = Pitch(
         pitch_type="opta",
         goal_type="box", goal_alpha=0.5, corner_arcs=True,
