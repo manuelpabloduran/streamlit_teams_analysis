@@ -345,7 +345,7 @@ if team_name:
 
     with col_entry2:
         # El segundo valor de retorno es el dataframe filtrado, que no usamos aquí.
-        fig_entry_corridor= plot_area_entry_by_corridor(df_page_filtered, team_name)
+        fig_entry_corridor = plot_area_entry_by_corridor(df_page_filtered, team_name)
         if fig_entry_corridor:
             st.pyplot(fig_entry_corridor, use_container_width=True)
         else:
