@@ -6,3 +6,4 @@ matplotlib
 seaborn
 mplsoccer
 scipy
+streamlit_plotly_events
