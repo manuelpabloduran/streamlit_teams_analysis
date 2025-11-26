@@ -460,6 +460,7 @@ def plot_goals_sunburst(df, team_name="Racing de Santander"):
         texttemplate='%{label}<br>%{percentRoot:.1%}',
         hovertemplate=(
             '<b>%{label}</b><br>' +
+            'Goles: %{value}<br>' +
             'Porcentaje: %{percentRoot:.1%}<extra></extra>'
         )
     )
