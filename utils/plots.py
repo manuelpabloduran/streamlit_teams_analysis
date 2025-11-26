@@ -1656,3 +1656,49 @@ def plot_area_entry_by_corridor(
 
     plt.tight_layout()
     return fig
+
+def plot_distribution_comparison(df, team_name, column, title, xaxis_title):
+    """
+    Crea un gráfico de densidad para comparar la distribución de una columna
+    entre el equipo seleccionado y el resto de la liga.
+    """
+    # Usamos el df global que ya está filtrado por fecha, etc.
+    # Necesitamos una fila por posesión para no contar la misma duración/xg varias veces.
+    df_poss = df.drop_duplicates(subset=['Posesion']).copy()
+    df_poss = df_poss.dropna(subset=[column])
+
+    if df_poss.empty:
+        st.warning(f"No hay datos de posesión para la columna '{column}'.")
+        return None
+
+    # Crear una columna para diferenciar el equipo seleccionado del resto
+    df_poss['Grupo'] = np.where(df_poss['TeamName'] == team_name, team_name, 'Resto de la Liga')
+
+    # Definir colores
+    color_map = {
+        team_name: '#EF553B',  # Naranja/Rojo de Plotly
+        'Resto de la Liga': '#636EFA'  # Azul de Plotly
+    }
+
+    # Crear el gráfico de densidad con Plotly Express
+    fig = px.histogram(
+        df_poss,
+        x=column,
+        color='Grupo',
+        color_discrete_map=color_map,
+        histnorm='probability density',  # Esto crea un gráfico de densidad
+        barmode='overlay',               # Superponer las distribuciones
+        marginal='rug',                  # Añade 'rugs' para ver puntos de datos individuales
+        opacity=0.6,
+        template="plotly_white"
+    )
+
+    fig.update_layout(
+        title_text=title,
+        xaxis_title_text=xaxis_title,
+        yaxis_title_text='Densidad',
+        legend_title_text='Comparativa'
+    )
+
+    return fig
+

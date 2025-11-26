@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from utils.plots import plot_team_progression_with_hist, plot_offensive_sequences, plot_player_xg_xgot, plot_goals_sunburst, plot_offensive_dashboard, plot_goal_actions_bar, plot_pass_matrix, plot_pass_xg_matrix, plot_area_entries_team, plot_area_entry_passes, plot_area_entry_by_corridor
+from utils.plots import plot_team_progression_with_hist, plot_offensive_sequences, plot_player_xg_xgot, plot_goals_sunburst, plot_offensive_dashboard, plot_goal_actions_bar, plot_pass_matrix, plot_pass_xg_matrix, plot_area_entries_team, plot_area_entry_passes, plot_area_entry_by_corridor, plot_distribution_comparison
 from streamlit_plotly_events import plotly_events
 
 st.set_page_config(layout="wide")
@@ -243,6 +243,33 @@ m_col5.metric("xGOT Acumulado", f"{total_xgot:.2f}")
 m_col6.metric("xGOT por Tiro", f"{xgot_per_shot:.2f}")
 m_col7.metric("xG Conversion (Total)", f"{xg_conversion:.2f}")
 m_col8.metric("xG Conversion (Promedio)", f"{avg_xg_conversion:.2f}")
+
+st.markdown("---")
+st.header("Análisis Comparativo de Posesión")
+
+dist_col1, dist_col2 = st.columns(2)
+
+with dist_col1:
+    fig_duration = plot_distribution_comparison(
+        df,
+        team_name,
+        'possession_duration',
+        title='Distribución de Duración de Posesión',
+        xaxis_title='Duración (segundos)'
+    )
+    if fig_duration:
+        st.plotly_chart(fig_duration, use_container_width=True)
+
+with dist_col2:
+    fig_xg = plot_distribution_comparison(
+        df,
+        team_name,
+        'possession_xg',
+        title='Distribución de xG por Posesión',
+        xaxis_title='xG por Posesión'
+    )
+    if fig_xg:
+        st.plotly_chart(fig_xg, use_container_width=True)
 
 # --- Inicio del Análisis con el DF ya filtrado ---
 
