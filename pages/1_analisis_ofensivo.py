@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from utils.plots import plot_team_progression_with_hist, plot_offensive_sequences, plot_player_xg_xgot, plot_goals_sunburst, plot_offensive_dashboard, plot_goal_actions_bar, plot_pass_matrix, plot_pass_xg_matrix
+from utils.plots import plot_team_progression_with_hist, plot_offensive_sequences, plot_player_xg_xgot, plot_goals_sunburst, plot_offensive_dashboard, plot_goal_actions_bar, plot_pass_matrix, plot_pass_xg_matrix, plot_area_entries_team
 from streamlit_plotly_events import plotly_events
 
 st.set_page_config(layout="wide")
@@ -270,6 +270,14 @@ if team_name:
             st.pyplot(fig_pass_xg_matrix_final_third, use_container_width=True)
         else:
             st.warning(f"No se pudo generar la matriz de pases de xG en último tercio para {team_name}.")
+
+    st.markdown("---")
+    st.header("Entradas al Área Rival")
+    fig_area_entries, _, _ = plot_area_entries_team(df_page_filtered, team_name)
+    if fig_area_entries:
+        st.pyplot(fig_area_entries, use_container_width=True)
+    else:
+        st.warning(f"No se pudo generar el gráfico de entradas al área para {team_name}.")
 
     with st.expander("Análisis de progresión por pasillo en campo rival", expanded=False):
         # Para esta sección, usamos un dataframe filtrado solo por equipo, no por los otros filtros.

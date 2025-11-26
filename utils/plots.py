@@ -8,6 +8,7 @@ from mplsoccer import Pitch
 import streamlit as st
 from scipy.interpolate import make_interp_spline
 from collections import defaultdict
+import matplotlib.patheffects as pe
 
 # Definición de pasillos_y para plot_team_progression_with_hist
 pasillos_y = {
@@ -367,9 +368,6 @@ def plot_player_xg_xgot(df, team_name):
 )
 
     return fig
-
-import plotly.express as px
-import streamlit as st
 
 def plot_goals_sunburst(df, team_name="Racing de Santander"):
     """
@@ -1180,3 +1178,157 @@ def plot_pass_xg_matrix(df, team_name, min_x=0):
 
     plt.tight_layout()
     return fig
+
+def plot_area_entries_team(
+    df,
+    team_name,
+    title="Ingresos área rival",
+    box_end_x=83, box_end_y_low=21, box_end_y_high=79,
+    box_start_x=83, box_start_y_low=21, box_start_y_high=79,
+    x_bands=(50.0, 65.5, 83, 100),          # bandas en largo
+    pasillo_edges=(0.0, 21.0, 37.0, 63.0, 79.0, 100),  # pasillos en ancho
+    rect_color="#4CAF50",
+    line_color="white",
+    bg_color="#22312b",
+    show_counts=True,
+    count_threshold=1,
+    label_fontsize=14,
+    figsize=(8, 6),
+):
+    """
+    Heatmap discreto de desde dónde entra al área rival un equipo (posesiones exitosas).
+
+    df: dataframe con todos los eventos
+    team_name: nombre del equipo a analizar (usa df['TeamName'])
+    """
+
+    # --- Filtrar equipo ---
+    df_team = df[df["TeamName"] == team_name].copy()
+    if df_team.empty:
+        # En lugar de un error, devolvemos una figura vacía con un mensaje
+        fig, ax = plt.subplots(figsize=figsize)
+        pitch = Pitch(
+            pitch_type="opta",
+            goal_type="box", goal_alpha=0.5, corner_arcs=True,
+            pitch_color=bg_color, line_color=line_color, linewidth=2,
+        )
+        pitch.draw(ax=ax)
+        ax.set_title(f"{team_name} – Sin datos de eventos",
+                     fontsize=16, color="white", fontweight="bold")
+        return fig, pd.DataFrame(), None
+
+
+    # --- Filtro de entradas exitosas al área rival ---
+    def _filter_entries(d):
+        d = d.copy()
+        ok = (
+            (d["x"] >= 50) &                              # al menos en campo rival
+            (d["corner_taken"] != "-1") &                 # excluir corners (ajusta si cambia)
+            (d["Outcome"].eq(1)) &                        # acción exitosa
+            (d["end_x"] >= box_end_x) &                   # termina dentro del área en x
+            (d["end_y"] >= box_end_y_low) &
+            (d["end_y"] <= box_end_y_high) &              # termina dentro del área en y
+            ~(
+                (d["x"] >= box_start_x) &
+                (d["y"] >= box_start_y_low) &
+                (d["y"] <= box_start_y_high)
+            )                                             # no empieza ya dentro del área
+        )
+        return d.loc[ok]
+
+    df_entries = _filter_entries(df_team)
+
+    # Si no hay entradas, devolvemos figura vacía agradable
+    fig, ax = plt.subplots(figsize=figsize)
+    pitch = Pitch(
+        pitch_type="opta",
+        goal_type="box", goal_alpha=0.5, corner_arcs=True,
+        pitch_color=bg_color, line_color=line_color, linewidth=2,
+    )
+    pitch.draw(ax=ax)
+
+    if df_entries.empty:
+        ax.set_title(f"{team_name} – Sin ingresos al área con los filtros actuales",
+                     fontsize=16, color="white", fontweight="bold")
+        return fig, df_entries, None
+
+    # --- Preparamos rejilla ---
+    x_edges = np.array(x_bands, dtype=float)
+    y_edges = np.array(pasillo_edges, dtype=float)
+
+    def _grid_counts(df_xy, x_edges, y_edges):
+        counts = np.zeros((len(x_edges) - 1, len(y_edges) - 1), dtype=int)
+        if df_xy.empty:
+            return counts
+        X = df_xy["x"].to_numpy()
+        Y = df_xy["y"].to_numpy()
+        xi = np.digitize(X, x_edges) - 1
+        yi = np.digitize(Y, y_edges) - 1
+        valid = (
+            (xi >= 0) & (xi < len(x_edges) - 1) &
+            (yi >= 0) & (yi < len(y_edges) - 1)
+        )
+        for i, j in zip(xi[valid], yi[valid]):
+            counts[i, j] += 1
+        return counts
+
+    counts = _grid_counts(df_entries, x_edges, y_edges)
+    total_entries = int(counts.sum())
+    max_c = counts.max() if counts.size and counts.max() > 0 else 1
+
+    # --- Pintar rectángulos ---
+    for i in range(len(x_edges) - 1):
+        x0, x1 = float(x_edges[i]), float(x_edges[i + 1])
+        dx = x1 - x0
+        for j in range(len(y_edges) - 1):
+            y0, y1 = float(y_edges[j]), float(y_edges[j + 1])
+            dy = y1 - y0
+            c = counts[i, j]
+            if c > 0:
+                alpha = (c / max_c) * 0.95
+                ax.add_patch(
+                    plt.Rectangle(
+                        (x0, y0),
+                        dx,
+                        dy,
+                        facecolor=rect_color,
+                        edgecolor="none",
+                        alpha=alpha,
+                        zorder=1,
+                    )
+                )
+                if show_counts and c >= count_threshold:
+                    ax.text(
+                        x0 + dx / 2,
+                        y0 + dy / 2,
+                        f"{c}",
+                        ha="center",
+                        va="center",
+                        fontsize=label_fontsize,
+                        color="white",
+                        fontweight="bold",
+                        zorder=3,
+                        path_effects=[
+                            pe.Stroke(linewidth=3.5, foreground="black", alpha=0.95),
+                            pe.Normal(),
+                        ],
+                    )
+
+    ax.set_title(
+        f"{team_name} – Ingresos al área rival\n"
+        f"(total: {total_entries})",
+        fontsize=18,
+        color="white",
+        fontweight="bold",
+    )
+
+    # Opcional: ajustar límites para que se vea todo bien
+    ax.set_xlim(-2, 107)
+    ax.set_ylim(-3, 103)
+
+    return fig, df_entries, {
+        "grid": counts,
+        "total_entries": total_entries,
+        "x_edges": x_edges,
+        "y_edges": y_edges,
+    }
