@@ -210,61 +210,25 @@ if team_name:
 
     col_sun, col_actions = st.columns(2)
 
-    # Por defecto: sin filtro
-    df_for_bar = df_page_filtered.copy()
-    label_clicked = None
-
     with col_sun:
         fig_sunburst, df_goles_es = plot_goals_sunburst(df_page_filtered, team_name)
-
         if fig_sunburst:
-            # plotly_events ya pinta el gráfico
-            selected_points = plotly_events(
-                fig_sunburst,
-                click_event=True,
-                hover_event=False,
-                select_event=False,
-                key="sunburst_click",
-            )
-
-            if selected_points:
-                point = selected_points[0]
-                # Intentamos sacar un identificador razonable
-                label_clicked = point.get("label") or point.get("id") or point.get("x") or point.get("y")
-
-                if label_clicked is not None:
-                    # Filtramos df_goles_es según el label clicado
-                    mask = (
-                        (df_goles_es["play_type_es"] == label_clicked) |
-                        (df_goles_es["shot_location_es"] == label_clicked) |
-                        (df_goles_es["shot_part_es"] == label_clicked)
-                    )
-                    goles_sel = df_goles_es[mask]
-
-                    if not goles_sel.empty:
-                        pos_sel = goles_sel["Posesion"].unique()
-                        df_for_bar = df_page_filtered[df_page_filtered["Posesion"].isin(pos_sel)].copy()
-                else:
-                    # Si quieres debugear qué devuelve:
-                    st.write("Punto seleccionado (sin label/id):", point)
-
+            st.plotly_chart(fig_sunburst, use_container_width=True)
         else:
             st.warning(f"No hay datos de goles para {team_name}.")
 
     with col_actions:
-        fig_actions = plot_goal_actions_bar(df_for_bar, team_name)
+        fig_actions = plot_goal_actions_bar(df_page_filtered, team_name)
         if fig_actions:
             st.plotly_chart(fig_actions, use_container_width=True)
-            if label_clicked is not None:
-                st.caption(f"Filtro aplicado desde sunburst: **{label_clicked}**")
         else:
             st.warning(f"No se pudo generar el gráfico de acciones en goles para {team_name}.")
 
-        fig_dashboard = plot_offensive_dashboard(df_page_filtered, team_name)
-        if fig_dashboard:
-            st.pyplot(fig_dashboard, use_container_width=True)
-        else:
-            st.warning(f"No se pudo generar el dashboard de finalización para {team_name}.")
+    fig_dashboard = plot_offensive_dashboard(df_page_filtered, team_name)
+    if fig_dashboard:
+        st.pyplot(fig_dashboard, use_container_width=True)
+    else:
+        st.warning(f"No se pudo generar el dashboard de finalización para {team_name}.")
 
     with st.expander("Análisis de progresión por pasillo en campo rival", expanded=False):
         # Para esta sección, usamos un dataframe filtrado solo por equipo, no por los otros filtros.
