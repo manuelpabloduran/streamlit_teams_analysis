@@ -1338,7 +1338,7 @@ def plot_area_entries_team(
             (d["corner_taken"] != "-1") &                 # excluir corners (ajusta si cambia)
             (d["corner_taken"].isna()) &
             (d["Outcome"].eq(1)) &                        # acción exitosa
-            ((d["NaEventType"] == "Pass")| (d["NaEventType"] == "BallDrive")) &
+            ((d["NaEventType"] == "Pass")) &
             (d["end_x"] >= box_end_x) &                   # termina dentro del área en x
             (d["end_y"] >= box_end_y_low) &
             (d["end_y"] <= box_end_y_high) &              # termina dentro del área en y
