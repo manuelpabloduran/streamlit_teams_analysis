@@ -1795,6 +1795,7 @@ def plot_area_entry_drives(
         (dfp["TeamName"] == team_name) &
         (dfp["NaEventType"] == "BallDrive") &
         (dfp["x"] > 50) &  # <--- AÑADIDO: Filtrar por inicio en campo rival
+        (dfp["end_x"] > dfp["x"]) &
         (dfp["Outcome"] == 1)
     ].copy()
 
@@ -1865,6 +1866,7 @@ def plot_area_entry_drives_by_corridor(
         (dfp["TeamName"] == team_name) &
         (dfp["NaEventType"] == "BallDrive") &
         (dfp["x"] > 50) & # <--- AÑADIDO: Filtrar por inicio en campo rival
+        (dfp["end_x"] > dfp["x"]) &
         (dfp["Outcome"] == 1)
     ].copy()
 
