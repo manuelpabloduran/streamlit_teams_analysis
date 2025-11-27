@@ -118,7 +118,8 @@ with st.expander("Filtros y Estadísticas", expanded=True):
 
 # Aplicar filtros al dataframe
 if play_type_name != "Todos":
-    df_page_filtered = df_page_filtered[df_page_filtered['play_type'] == play_type_name]
+    poss_with_play_type = df_page_filtered[df_page_filtered['play_type'] == play_type_name]['Posesion'].unique()
+    df_page_filtered = df_page_filtered[df_page_filtered['Posesion'].isin(poss_with_play_type)]
 
 if goal_only_filter:
     goal_posesiones = df_page_filtered[df_page_filtered['NaEventType'] == 'Goal']['Posesion'].unique()
