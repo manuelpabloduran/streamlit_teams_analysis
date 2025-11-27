@@ -63,9 +63,9 @@ def plot_xgot_scatter(df):
     return fig_xgot
 
 # Visualización con histogramas para un equipo específico
-def plot_team_progression_with_hist(df_analisis_progreso, team_name, conteo_inicio, conteo_fin, stats, bins_x=np.linspace(50, 95, 25), bins_y=np.linspace(5, 95, 25)):
+def plot_team_progression_with_hist(df_analisis_progreso, team_name, conteo_inicio, conteo_fin, stats, filter_col='TeamName', bins_x=np.linspace(50, 95, 25), bins_y=np.linspace(5, 95, 25)):
     team_events = df_analisis_progreso[
-        (df_analisis_progreso['TeamName'] == team_name)
+        (df_analisis_progreso[filter_col] == team_name)
     ]
     if team_events.empty:
         print(f'Sin eventos para {team_name}')
@@ -179,12 +179,12 @@ def plot_team_progression_with_hist(df_analisis_progreso, team_name, conteo_inic
     
     return fig
 
-def plot_offensive_sequences(df_filtrado, team_name):
+def plot_offensive_sequences(df_filtrado, team_name, filter_col='TeamName'):
     """
     Crea un Bumpy Chart de las secuencias ofensivas por pasillos para un equipo específico.
     """
 
-    df_team = df_filtrado[df_filtrado['TeamName'] == team_name].copy()
+    df_team = df_filtrado[df_filtrado[filter_col] == team_name].copy()
 
     if 'pasillo' not in df_team.columns:
         st.error("La columna 'pasillo' no se encontró en los datos.")
@@ -289,11 +289,11 @@ def plot_offensive_sequences(df_filtrado, team_name):
     
     return fig
 
-def plot_player_xg_xgot(df, team_name):
+def plot_player_xg_xgot(df, team_name, filter_col='TeamName'):
     """
     Crea un gráfico de barras agrupadas de xG y xGOT por jugador para un equipo específico.
     """
-    df_equipo = df[df['TeamName'] == team_name]
+    df_equipo = df[df[filter_col] == team_name]
 
     if df_equipo.empty:
         st.warning(f"⚠️ No hay datos para el equipo {team_name}.")
@@ -370,13 +370,13 @@ def plot_player_xg_xgot(df, team_name):
 
     return fig
 
-def plot_goals_sunburst(df, team_name="Racing de Santander"):
+def plot_goals_sunburst(df, team_name="Racing de Santander", filter_col='TeamName'):
     """
     Sunburst de goles por tipo de jugada, ubicación y parte del cuerpo (en español),
     mostrando nº de goles y % sobre el total.
     """
     df_goles = df[
-        (df['TeamName'] == team_name) &
+        (df[filter_col] == team_name) &
         (df['NaEventType'] == 'Goal') &
         (df['own_goal'] != -1)
     ].copy()
@@ -475,11 +475,11 @@ def plot_goals_sunburst(df, team_name="Racing de Santander"):
     return fig, df_goles
 
 
-def plot_offensive_dashboard(df, team_name):
+def plot_offensive_dashboard(df, team_name, filter_col='TeamName'):
     from PIL import Image
     import os
 
-    df_equipo = df[df['TeamName'] == team_name]
+    df_equipo = df[df[filter_col] == team_name]
     # --- FILTRO GOLES A FAVOR ---
     df_goles = df_equipo[
         (df_equipo['NaEventType'] == 'Goal') &
@@ -666,13 +666,13 @@ def plot_offensive_dashboard(df, team_name):
     return fig
 
 
-def summarize_goal_possessions(df, team_name):
+def summarize_goal_possessions(df, team_name, filter_col='TeamName'):
     """
     Devuelve un DataFrame con un flag por tipo de acción
     para cada posesión que termina en gol.
     """
     # 1) Filtrar equipo
-    df_team = df[df['TeamName'] == team_name].copy()
+    df_team = df[df[filter_col] == team_name].copy()
 
     # 2) Posesiones que terminan en gol a favor
     df_goals = df_team[
@@ -734,9 +734,9 @@ def summarize_goal_possessions(df, team_name):
 
     return per_pos
 
-def plot_goal_actions_bar(df, team_name="Racing de Santander"):
+def plot_goal_actions_bar(df, team_name="Racing de Santander", filter_col='TeamName'):
     try:
-        per_pos = summarize_goal_possessions(df, team_name)
+        per_pos = summarize_goal_possessions(df, team_name, filter_col=filter_col)
     except ValueError as e:
         st.warning(f"⚠️ {e}")
         return None
@@ -785,11 +785,11 @@ def plot_goal_actions_bar(df, team_name="Racing de Santander"):
     return fig
 
 
-def plot_offensive_dashboard(df, team_name):
+def plot_offensive_dashboard(df, team_name, filter_col='TeamName'):
     from PIL import Image
     import os
 
-    df_equipo = df[df['TeamName'] == team_name]
+    df_equipo = df[df[filter_col] == team_name]
     # --- FILTRO GOLES A FAVOR ---
     df_goles = df_equipo[
         (df_equipo['NaEventType'] == 'Goal') &
@@ -975,13 +975,13 @@ def plot_offensive_dashboard(df, team_name):
 
     return fig
 
-def plot_pass_matrix(df, team_name, x_range=(0, 100), y_range=(0, 100)):
+def plot_pass_matrix(df, team_name, filter_col='TeamName', x_range=(0, 100), y_range=(0, 100)):
     """
     Crea una matriz de pases (heatmap) para un equipo, con opción de filtrar por zona.
     """
     # 1. Filtrar datos
     mask = (
-        (df['TeamName'] == team_name) &
+        (df[filter_col] == team_name) &
         (df['NaEventType'] == 'Pass') &
         (df['Outcome'] == 1) &
         (df['receiving_player'].notna()) &
@@ -1077,12 +1077,12 @@ def plot_pass_matrix(df, team_name, x_range=(0, 100), y_range=(0, 100)):
     return fig
 
 
-def plot_pass_xg_matrix(df, team_name, x_range=(0, 100), y_range=(0, 100)):
+def plot_pass_xg_matrix(df, team_name, filter_col='TeamName', x_range=(0, 100), y_range=(0, 100)):
     """
     Crea una matriz de pases ponderada por el xG de la posesión.
     """
     # 1. Preparar datos: Asignar xG de la posesión a todos sus eventos
-    df_team = df[df['TeamName'] == team_name].copy()
+    df_team = df[df[filter_col] == team_name].copy()
     
     # Obtener el xG por posesión (solo las que terminan en tiro)
     possession_xg = df_team.loc[df_team['xg'].notna()].groupby('Posesion')['xg'].sum()
@@ -1188,6 +1188,7 @@ def plot_pass_xg_matrix(df, team_name, x_range=(0, 100), y_range=(0, 100)):
 def plot_area_entries_team(
     df,
     team_name,
+    filter_col='TeamName',
     title="Ingresos área rival",
     box_end_x=83, box_end_y_low=21, box_end_y_high=79,
     box_start_x=83, box_start_y_low=21, box_start_y_high=79,
@@ -1205,11 +1206,12 @@ def plot_area_entries_team(
     Heatmap discreto de desde dónde entra al área rival un equipo (posesiones exitosas).
 
     df: dataframe con todos los eventos
-    team_name: nombre del equipo a analizar (usa df['TeamName'])
+    team_name: nombre del equipo a analizar
+    filter_col: columna para filtrar ('TeamName' o 'RivalName')
     """
 
     # --- Filtrar equipo ---
-    df_team = df[df["TeamName"] == team_name].copy()
+    df_team = df[df[filter_col] == team_name].copy()
     if df_team.empty:
         # En lugar de un error, devolvemos una figura vacía con un mensaje
         fig, ax = plt.subplots(figsize=figsize)
@@ -1345,6 +1347,7 @@ def plot_area_entries_team(
 def plot_rival_half_entries_team(
     df,
     team_name,
+    filter_col='TeamName',
     title="Ingresos a Campo Rival",
     x_bands=(50.0, 65.5, 83, 100),
     pasillo_edges=(0.0, 21.0, 37.0, 63.0, 79.0, 100),
@@ -1359,7 +1362,7 @@ def plot_rival_half_entries_team(
     """
     Heatmap discreto de dónde ingresa a campo rival un equipo.
     """
-    df_team = df[df["TeamName"] == team_name].copy()
+    df_team = df[df[filter_col] == team_name].copy()
     if df_team.empty:
         fig, ax = plt.subplots(figsize=figsize)
         pitch = Pitch(pitch_type="opta", pitch_color=bg_color, line_color=line_color)
@@ -1422,6 +1425,7 @@ def plot_rival_half_entries_team(
 def plot_area_entry_passes(
     df,
     team_name,
+    filter_col='TeamName',
     title_prefix="Ingresos al área por tipo de pase",
     only_assists=False,
     box_min_x=83.0,
@@ -1439,7 +1443,7 @@ def plot_area_entry_passes(
 
     dfp = df.copy()
     dfp = dfp[
-        (dfp["TeamName"] == team_name) &
+        (dfp[filter_col] == team_name) &
         ((dfp["NaEventType"] == "Pass")| (dfp["NaEventType"] == "BallDrive")) &
         (dfp["corner_taken"].isna()) &
         (dfp["Outcome"] == 1)                               # pase correcto
@@ -1584,6 +1588,7 @@ def plot_area_entry_passes(
 def plot_area_entry_by_corridor(
     df,
     team_name,
+    filter_col='TeamName',
     title_prefix="Ingresos al área por pasillo de origen",
     box_min_x=83.0,
     box_y_low=21,
@@ -1618,7 +1623,7 @@ def plot_area_entry_by_corridor(
     # --- Filtro base: pases correctos del equipo que terminan entrando al área ---
     dfp = df.copy()
     dfp = dfp[
-        (dfp["TeamName"] == team_name) &
+        (dfp[filter_col] == team_name) &
         (dfp["NaEventType"] == "Pass") &
         (dfp["corner_taken"].isna()) &
         (dfp["Outcome"] == 1)        # pase correcto
@@ -1662,14 +1667,10 @@ def plot_area_entry_by_corridor(
         print(f"⚠️ No hay ingresos con pasillo identificable para {team_name}.")
         return None, dfp
 
-    # --- Plot pitch ---
     pitch = Pitch(pitch_type="opta", stripe=False)
     fig, ax = pitch.draw(figsize=(12, 7))
-    # fig.set_facecolor("#EFE9E6")
 
-    # --- Dibujar pases por pasillo ---
-    corridor_order = list(pasillos_y.keys())  # mantiene el orden deseado
-
+    corridor_order = list(pasillos_y.keys())
     counts_corridor = {}
 
     for corridor_name in corridor_order:
@@ -1677,51 +1678,32 @@ def plot_area_entry_by_corridor(
         counts_corridor[corridor_name] = len(dfk)
         if dfk.empty:
             continue
-
         color = PASILLO_COLORS.get(corridor_name, "#000000")
-
-        # trayectorias
         pitch.lines(
             dfk["x"], dfk["y"], dfk["end_x"], dfk["end_y"],
-            color=color,
-            comet=True,
-            transparent=True,
-            alpha_start=0.10,
-            alpha_end=0.30,
-            ax=ax,
+            color=color, comet=True, transparent=True,
+            alpha_start=0.10, alpha_end=0.30, ax=ax, ls='dotted'
         )
-        # punto de entrada al área
         pitch.scatter(
-            dfk["end_x"], dfk["end_y"],
-            ax=ax,
-            facecolor="white",
-            edgecolor=color,
-            linewidth=1.2,
-            s=24,
-            zorder=4,
+            dfk["end_x"], dfk["end_y"], ax=ax, facecolor="white",
+            edgecolor=color, linewidth=1.2, s=24, zorder=4,
         )
 
     # --- Líneas finas separando pasillos y mitad de campo ---
-    # Líneas horizontales (límites de pasillos)
     for _, (y_min, y_max) in pasillos_y.items():
-        # dibujamos la línea en el límite superior de cada pasillo
         ax.axhline(y=y_min, color="grey", linestyle="--", linewidth=0.7, alpha=0.6)
-    # Último límite (100) por estética
     ax.axhline(y=100, color="grey", linestyle="--", linewidth=0.7, alpha=0.6)
-
-    # Línea vertical en mitad de campo (x=50)
     ax.axvline(x=50, color="grey", linestyle="-", linewidth=1.0, alpha=0.8)
 
-    # --- Contadores en campo propio (x < 50) por pasillo ---
+    # --- Contadores por pasillo ---
     for corridor_name in corridor_order:
         y_min, y_max = pasillos_y[corridor_name]
         y_mid = (y_min + y_max) / 2
         count = counts_corridor.get(corridor_name, 0)
-        # Los ponemos en x=10 (lado propio), puedes ajustar
         ax.text(
             10,
             y_mid,
-            f"{count} ingresos",
+            f"{count} conducciones",
             ha="left",
             va="center",
             fontsize=11,
@@ -1730,30 +1712,15 @@ def plot_area_entry_by_corridor(
             zorder=5,
         )
 
-    # --- Leyenda de colores por pasillo ---
-    legend_items = [
-        Line2D([0], [0], color=PASILLO_COLORS[name], lw=4, label=name)
-        for name in corridor_order
-    ]
-    ax.legend(
-        handles=legend_items,
-        loc="lower right",
-        frameon=True,
-        facecolor="white",
-        edgecolor="none",
-        fontsize=10,
-    )
+    legend_items = [Line2D([0], [0], color=PASILLO_COLORS[name], lw=2, ls='dotted', label=name) for name in corridor_order]
+    ax.legend(handles=legend_items, loc="lower right", frameon=True, facecolor="white", edgecolor="none", fontsize=10)
 
     total_entries = len(dfp)
-    ax.set_title(
-        f"{title_prefix} — {team_name}\nIngresos al área: N={total_entries}",
-        fontsize=14,
-    )
-
+    ax.set_title(f"{title_prefix} — {team_name}\nTotal: N={total_entries}", fontsize=14)
     plt.tight_layout()
     return fig, dfp
 
-def plot_distribution_comparison(df, team_name, column, title, xaxis_title):
+def plot_distribution_comparison(df, team_name, column, title, xaxis_title, filter_col='TeamName'):
     """
     Crea un gráfico de densidad para comparar la distribución de una columna
     entre el equipo seleccionado y el resto de la liga.
@@ -1768,7 +1735,7 @@ def plot_distribution_comparison(df, team_name, column, title, xaxis_title):
         return None
 
     # Crear una columna para diferenciar el equipo seleccionado del resto
-    df_poss['Grupo'] = np.where(df_poss['TeamName'] == team_name, team_name, 'Resto de la Liga')
+    df_poss['Grupo'] = np.where(df_poss[filter_col] == team_name, team_name, 'Resto de la Liga')
 
     # Definir colores
     color_map = {
@@ -1801,6 +1768,7 @@ def plot_distribution_comparison(df, team_name, column, title, xaxis_title):
 def plot_area_entry_drives(
     df,
     team_name,
+    filter_col='TeamName',
     title_prefix="Conducciones en Campo Rival"
 ):
     """
@@ -1808,7 +1776,7 @@ def plot_area_entry_drives(
     """
     dfp = df.copy()
     dfp = dfp[
-        (dfp["TeamName"] == team_name) &
+        (dfp[filter_col] == team_name) &
         (dfp["NaEventType"] == "BallDrive") &
         (dfp["x"] > 50) &  # <--- AÑADIDO: Filtrar por inicio en campo rival
         (dfp["end_x"] > dfp["x"]) &
@@ -1861,6 +1829,7 @@ def plot_area_entry_drives(
 def plot_area_entry_drives_by_corridor(
     df,
     team_name,
+    filter_col='TeamName',
     title_prefix="Conducciones en Campo Rival por Pasillo"
 ):
     """
@@ -1879,7 +1848,7 @@ def plot_area_entry_drives_by_corridor(
 
     dfp = df.copy()
     dfp = dfp[
-        (dfp["TeamName"] == team_name) &
+        (dfp[filter_col] == team_name) &
         (dfp["NaEventType"] == "BallDrive") &
         (dfp["x"] > 50) & # <--- AÑADIDO: Filtrar por inicio en campo rival
         (dfp["end_x"] > dfp["x"]) &
