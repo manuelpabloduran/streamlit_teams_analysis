@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from utils.plots import plot_team_progression_with_hist, plot_offensive_sequences, plot_player_xg_xgot, plot_goals_sunburst, plot_offensive_dashboard, plot_goal_actions_bar, plot_pass_matrix, plot_pass_xg_matrix, plot_area_entries_team, plot_rival_half_entries_team, plot_area_entry_passes, plot_area_entry_by_corridor, plot_distribution_comparison, plot_area_entry_drives, plot_area_entry_drives_by_corridor
+from utils.plots import plot_team_progression_with_hist, plot_offensive_sequences, plot_player_xg_xgot, plot_goals_sunburst, plot_offensive_dashboard, plot_goal_actions_bar, plot_xg_actions_bar, plot_pass_matrix, plot_pass_xg_matrix, plot_area_entries_team, plot_rival_half_entries_team, plot_area_entry_passes, plot_area_entry_by_corridor, plot_distribution_comparison, plot_area_entry_drives, plot_area_entry_drives_by_corridor
 from streamlit_plotly_events import plotly_events
 
 st.set_page_config(layout="wide")
@@ -336,21 +336,30 @@ if team_name:
     else:
         st.warning(f"No se pudo generar el gráfico de xG/xGOT por jugador para {team_name}.")
 
-    col_sun, col_actions = st.columns(2)
+    # Sunburst en una fila propia
+    fig_sunburst, df_goles_es = plot_goals_sunburst(df_page_filtered, team_name)
+    if fig_sunburst:
+        st.plotly_chart(fig_sunburst, use_container_width=True)
+    else:
+        st.warning(f"No hay datos de goles para {team_name}.")
 
-    with col_sun:
-        fig_sunburst, df_goles_es = plot_goals_sunburst(df_page_filtered, team_name)
-        if fig_sunburst:
-            st.plotly_chart(fig_sunburst, use_container_width=True)
-        else:
-            st.warning(f"No hay datos de goles para {team_name}.")
+    # Gráficos de acciones en dos columnas
+    col_actions1, col_actions2 = st.columns(2)
 
-    with col_actions:
+    with col_actions1:
         fig_actions = plot_goal_actions_bar(df_page_filtered, team_name)
         if fig_actions:
             st.plotly_chart(fig_actions, use_container_width=True)
         else:
             st.warning(f"No se pudo generar el gráfico de acciones en goles para {team_name}.")
+
+    with col_actions2:
+        fig_xg_actions = plot_xg_actions_bar(df_page_filtered, team_name)
+        if fig_xg_actions:
+            st.plotly_chart(fig_xg_actions, use_container_width=True)
+        else:
+            st.warning(f"No se pudo generar el gráfico de xG por acción para {team_name}.")
+
 
     fig_dashboard = plot_offensive_dashboard(df_page_filtered, team_name)
     if fig_dashboard:

@@ -6,7 +6,8 @@ from utils.plots import (
     plot_offensive_sequences, 
     plot_goals_sunburst, 
     plot_offensive_dashboard, 
-    plot_goal_actions_bar, 
+    plot_goal_actions_bar,
+    plot_xg_actions_bar,
     plot_area_entries_team, 
     plot_rival_half_entries_team, 
     plot_area_entry_passes, 
@@ -166,23 +167,33 @@ st.header("Análisis de Amenazas Recibidas")
 if team_name:
     st.write(f"Mostrando análisis defensivo para **{team_name}** (acciones de sus rivales)")
 
-    col_sun, col_actions = st.columns(2)
+    # Sunburst en una fila propia
+    st.subheader("Goles Recibidos por Tipo de Jugada")
+    fig_sunburst, _ = plot_goals_sunburst(df_page_filtered, team_name, filter_col='RivalName')
+    if fig_sunburst:
+        st.plotly_chart(fig_sunburst, use_container_width=True)
+    else:
+        st.warning(f"No hay datos de goles recibidos para {team_name}.")
 
-    with col_sun:
-        st.subheader("Goles Recibidos por Tipo de Jugada")
-        fig_sunburst, _ = plot_goals_sunburst(df_page_filtered, team_name, filter_col='RivalName')
-        if fig_sunburst:
-            st.plotly_chart(fig_sunburst, use_container_width=True)
-        else:
-            st.warning(f"No hay datos de goles recibidos para {team_name}.")
+    # Gráficos de acciones en dos columnas
+    col_actions1, col_actions2 = st.columns(2)
 
-    with col_actions:
+    with col_actions1:
         st.subheader("Características de las Posesiones con Gol Recibido")
         fig_actions = plot_goal_actions_bar(df_page_filtered, team_name, filter_col='RivalName')
         if fig_actions:
             st.plotly_chart(fig_actions, use_container_width=True)
         else:
             st.warning(f"No se pudo generar el gráfico de acciones en goles recibidos para {team_name}.")
+
+    with col_actions2:
+        st.subheader("xG Acumulado del Rival por Tipo de Acción")
+        fig_xg_actions = plot_xg_actions_bar(df_page_filtered, team_name, filter_col='RivalName')
+        if fig_xg_actions:
+            st.plotly_chart(fig_xg_actions, use_container_width=True)
+        else:
+            st.warning(f"No se pudo generar el gráfico de xG por acción para {team_name}.")
+
 
     st.subheader("Mapa de Goles y Tiros a Puerta Recibidos")
     fig_dashboard = plot_offensive_dashboard(df_page_filtered, team_name, filter_col='RivalName')
