@@ -1296,7 +1296,7 @@ def plot_area_entries_team(
     title="Ingresos área rival",
     box_end_x=83, box_end_y_low=21, box_end_y_high=79,
     box_start_x=83, box_start_y_low=21, box_start_y_high=79,
-    x_bands=(50.0, 65.5, 83, 100),          # bandas en largo
+    x_bands=(25.0, 50.0, 65.5, 83, 100),          # bandas en largo
     pasillo_edges=(0.0, 21.0, 37.0, 63.0, 79.0, 100),  # pasillos en ancho
     rect_color="#4CAF50",
     line_color="white",
