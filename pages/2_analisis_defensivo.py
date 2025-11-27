@@ -95,7 +95,25 @@ with st.expander("Filtros y Estadísticas", expanded=True):
         player_name = st.selectbox('Selección de Jugador (del equipo rival)', ["Todos"] + players)
 
     with col3:
-        goal_only_filter = st.checkbox('Solo posesiones con gol')
+        goal_only_filter = st.checkbox('Solo posesiones con gol en contra')
+
+    col4, col5 = st.columns(2)
+    with col4:
+        possession_xg_filter = st.slider(
+            'Filtro por xG de la Posesión del Rival',
+            min_value=0.0,
+            max_value=1.0,
+            value=(0.0, 1.0),
+            step=0.05
+        )
+    with col5:
+        possession_duration_filter = st.slider(
+            'Filtro por Duración de la Posesión del Rival (segundos)',
+            min_value=0,
+            max_value=100,
+            value=(0, 100),
+            step=1
+        )
 
 # Aplicar filtros al dataframe
 if player_name != "Todos":
@@ -104,6 +122,18 @@ if player_name != "Todos":
 if goal_only_filter:
     goal_posesiones = df_page_filtered[df_page_filtered['NaEventType'] == 'Goal']['Posesion'].unique()
     df_page_filtered = df_page_filtered[df_page_filtered['Posesion'].isin(goal_posesiones)]
+
+if possession_xg_filter:
+    df_page_filtered = df_page_filtered[
+        (df_page_filtered['possession_xg'] >= possession_xg_filter[0]) &
+        (df_page_filtered['possession_xg'] <= possession_xg_filter[1])
+    ]
+
+if possession_duration_filter:
+    df_page_filtered = df_page_filtered[
+        (df_page_filtered['possession_duration'] >= possession_duration_filter[0]) &
+        (df_page_filtered['possession_duration'] <= possession_duration_filter[1])
+    ]
 
 # --- Estadísticas Defensivas ---
 st.markdown("---")
