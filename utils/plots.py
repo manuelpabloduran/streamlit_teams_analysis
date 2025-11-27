@@ -704,6 +704,8 @@ def summarize_goal_possessions(df, team_name, filter_col='TeamName'):
             "Panenka": (g['Panenka'] == -1).any(),
             "Desviado": (g['Deflection'] == -1).any(),
             "Recuperación rápida tras pérdida": (g['counterpress_5s_flag'] == 1).any(),
+            "Saque de Banda": (g['throw_in'] == -1).any(),
+            "Saque de Falta": ((g['Set_piece'] == 1) | (g['Free_kick'] == 1)).any(),
             # Centros
             "Centro temprano": (
                 (g['cross'].notna()) & (g['x'] < 75)
