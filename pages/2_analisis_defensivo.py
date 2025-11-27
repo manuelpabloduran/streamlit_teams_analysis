@@ -92,8 +92,8 @@ with st.expander("Filtros y Estadísticas", expanded=True):
     df_page_filtered = df[df['RivalName'] == team_name].copy()
 
     with col2:
-        players = sorted(df_page_filtered['play_type'].dropna().unique())
-        player_name = st.selectbox('Selección de tipo de jugada', ["Todos"] + players)
+        play_types = sorted(df_page_filtered['play_type'].dropna().unique())
+        play_type_name = st.selectbox('Selección de tipo de jugada', ["Todos"] + play_types)
 
     with col3:
         goal_only_filter = st.checkbox('Solo posesiones con gol recibido')
@@ -117,8 +117,8 @@ with st.expander("Filtros y Estadísticas", expanded=True):
         )
 
 # Aplicar filtros al dataframe
-if player_name != "Todos":
-    df_page_filtered = df_page_filtered[df_page_filtered['NaPlayer'] == player_name]
+if play_type_name != "Todos":
+    df_page_filtered = df_page_filtered[df_page_filtered['play_type'] == play_type_name]
 
 if goal_only_filter:
     goal_posesiones = df_page_filtered[df_page_filtered['NaEventType'] == 'Goal']['Posesion'].unique()
