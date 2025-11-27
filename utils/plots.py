@@ -1895,8 +1895,11 @@ def plot_area_entry_drives_by_corridor(
     fig, ax = pitch.draw(figsize=(12, 7))
 
     corridor_order = list(pasillos_y.keys())
+    counts_corridor = {}
+
     for corridor_name in corridor_order:
         dfk = dfp[dfp["corridor"] == corridor_name]
+        counts_corridor[corridor_name] = len(dfk)
         if dfk.empty:
             continue
         color = PASILLO_COLORS.get(corridor_name, "#000000")
@@ -1908,6 +1911,29 @@ def plot_area_entry_drives_by_corridor(
         pitch.scatter(
             dfk["end_x"], dfk["end_y"], ax=ax, facecolor="white",
             edgecolor=color, linewidth=1.2, s=24, zorder=4,
+        )
+
+    # --- Líneas finas separando pasillos y mitad de campo ---
+    for _, (y_min, y_max) in pasillos_y.items():
+        ax.axhline(y=y_min, color="grey", linestyle="--", linewidth=0.7, alpha=0.6)
+    ax.axhline(y=100, color="grey", linestyle="--", linewidth=0.7, alpha=0.6)
+    ax.axvline(x=50, color="grey", linestyle="-", linewidth=1.0, alpha=0.8)
+
+    # --- Contadores por pasillo ---
+    for corridor_name in corridor_order:
+        y_min, y_max = pasillos_y[corridor_name]
+        y_mid = (y_min + y_max) / 2
+        count = counts_corridor.get(corridor_name, 0)
+        ax.text(
+            10,
+            y_mid,
+            f"{count} conducciones",
+            ha="left",
+            va="center",
+            fontsize=11,
+            color="black",
+            bbox=dict(facecolor="white", alpha=0.7, edgecolor="none", boxstyle="round,pad=0.3"),
+            zorder=5,
         )
 
     legend_items = [Line2D([0], [0], color=PASILLO_COLORS[name], lw=2, ls='dotted', label=name) for name in corridor_order]
