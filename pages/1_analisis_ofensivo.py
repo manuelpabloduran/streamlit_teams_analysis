@@ -6,7 +6,7 @@ from streamlit_plotly_events import plotly_events
 
 st.set_page_config(layout="wide")
 
-st.title('Análisis Ofensivo')
+st.title('Análisis Ofensivo - Progresiones con Finalización')
 
 # --- Carga y Preparación de Datos ---
 @st.cache_data
@@ -25,6 +25,9 @@ def asignar_pasillo(y):
         return 'Pasillo Exterior Izquierdo'
 
 df = pd.read_csv('possessions_with_shots.csv')
+
+# Filtro inicial para eventos con finalización
+#df = df[df['possession_with_shot']]
 
 # Corrección de goles en propia puerta
 own_goal_condition = (df['NaEventType'] == 'Goal') & (df['own_goal'].notna())

@@ -1419,12 +1419,12 @@ def plot_area_entry_passes(
     COLORS = {
         "Cutback":      "#C2185B",  # magenta
         "Dividido":     "#5555AA",  # azul grisáceo
-        "Through ball": "#1E90FF",  # azul
+        "Through ball": "#000000",  # azul
         "In-swinger":   "#2ECC71",  # verde
         "Out-swing":    "#1976D2",  # azul más oscuro
         "Long ball":    "#8D6E63",  # marrón
         "Lay-off":      "#FF8C00",  # naranja
-        "Other":        "#8E44AD",  # violeta
+        "Other":        "#BD73DC",  # violeta
     }
 
     # --------- Plot ----------
