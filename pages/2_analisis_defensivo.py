@@ -131,8 +131,9 @@ if possession_xg_filter:
 
 if possession_duration_filter:
     df_page_filtered = df_page_filtered[
-        (df_page_filtered['possession_duration'] >= possession_duration_filter[0]) &
-        (df_page_filtered['possession_duration'] <= possession_duration_filter[1])
+        ((df_page_filtered['possession_duration'] >= possession_duration_filter[0]) &
+        (df_page_filtered['possession_duration'] <= possession_duration_filter[1])) |
+        (df_page_filtered['possession_duration'].isna())
     ]
 
 # --- Estadísticas Defensivas ---
