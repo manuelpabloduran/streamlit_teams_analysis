@@ -1703,7 +1703,7 @@ def plot_area_entry_by_corridor(
         ax.text(
             10,
             y_mid,
-            f"{count} conducciones",
+            f"{count} Ingresos",
             ha="left",
             va="center",
             fontsize=11,
