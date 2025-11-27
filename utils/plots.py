@@ -1371,7 +1371,7 @@ def plot_rival_half_entries_team(
     ok = (
         (df_team["x"] <= 50) &
         (df_team["end_x"] > 50) &
-        (df_team["NaEventType"] == "Pass") &
+        ((df_team["NaEventType"] == "Pass")| (df_team["NaEventType"] == "BallDrive")) &
         (df_team["Outcome"] == 1)
     )
     df_entries = df_team.loc[ok].copy()
@@ -1440,7 +1440,7 @@ def plot_area_entry_passes(
     dfp = df.copy()
     dfp = dfp[
         (dfp["TeamName"] == team_name) &
-        (dfp["NaEventType"] == "Pass") &
+        ((dfp["NaEventType"] == "Pass")| (dfp["NaEventType"] == "BallDrive")) &
         (dfp["corner_taken"].isna()) &
         (dfp["Outcome"] == 1)                               # pase correcto
     ].copy()
