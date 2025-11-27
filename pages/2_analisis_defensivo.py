@@ -92,11 +92,11 @@ with st.expander("Filtros y Estadísticas", expanded=True):
     df_page_filtered = df[df['RivalName'] == team_name].copy()
 
     with col2:
-        players = sorted(df_page_filtered['NaPlayer'].dropna().unique())
-        player_name = st.selectbox('Selección de Jugador (del equipo rival)', ["Todos"] + players)
+        players = sorted(df_page_filtered['play_type'].dropna().unique())
+        player_name = st.selectbox('Selección de tipo de jugada', ["Todos"] + players)
 
     with col3:
-        goal_only_filter = st.checkbox('Solo posesiones con gol en contra')
+        goal_only_filter = st.checkbox('Solo posesiones con gol recibido')
 
     col4, col5 = st.columns(2)
     with col4:
@@ -224,7 +224,7 @@ if team_name:
 
     col_entry1, col_entry2 = st.columns(2)
     with col_entry1:
-        st.subheader("Tipos de Pases de Ingreso al Área del Rival")
+        st.subheader("Entradas al Área Propia por Pases del Rival")
         fig_entry_passes = plot_area_entry_passes(df_page_filtered, team_name, filter_col='RivalName')
         if fig_entry_passes:
             st.pyplot(fig_entry_passes, use_container_width=True)
@@ -232,7 +232,7 @@ if team_name:
             st.warning("No se pudo generar el gráfico de pases de entrada al área del rival.")
 
     with col_entry2:
-        st.subheader("Ingresos al Área del Rival por Pasillo de Origen")
+        st.subheader("Entradas al Área Propia por Pasillo de Origen del Rival")
         fig_entry_corridor, _ = plot_area_entry_by_corridor(df_page_filtered, team_name, filter_col='RivalName')
         if fig_entry_corridor:
             st.pyplot(fig_entry_corridor, use_container_width=True)
@@ -240,7 +240,7 @@ if team_name:
             st.warning("No se pudo generar el gráfico de entradas al área por pasillo del rival.")
             
     st.markdown("---")
-    st.subheader("Entradas al Área por Conducción del Rival")
+    st.subheader("Entradas al Área Propia por Conducción del Rival")
     col_drive1, col_drive2 = st.columns(2)
     with col_drive1:
         fig_drive_entries, _ = plot_area_entry_drives(df_page_filtered, team_name, filter_col='RivalName')
