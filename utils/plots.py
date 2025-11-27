@@ -1334,7 +1334,7 @@ def plot_area_entries_team(
     def _filter_entries(d):
         d = d.copy()
         ok = (
-            (d["x"] >= 50) &                              # al menos en campo rival
+            (d["x"] >= 25) &                              # al menos en campo rival
             (d["corner_taken"] != "-1") &                 # excluir corners (ajusta si cambia)
             (d["corner_taken"].isna()) &
             (d["Outcome"].eq(1)) &                        # acción exitosa
