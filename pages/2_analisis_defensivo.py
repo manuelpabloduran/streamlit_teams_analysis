@@ -92,8 +92,23 @@ with st.expander("Filtros y Estadísticas", expanded=True):
     df_page_filtered = df[df['RivalName'] == team_name].copy()
 
     with col2:
-        play_types = sorted(df_page_filtered['play_type'].dropna().unique())
-        play_type_name = st.selectbox('Selección de tipo de jugada', ["Todos"] + play_types)
+        play_type_map = {
+        "Regular_play": "Jugada Regular",
+        "Set_piece": "Balón parado",
+        "Penalty": "Penalti",
+        "Fast_break": "Transición rápida",
+        "From_corner": "Corner",
+        "Free_kick": "Balón parado",
+        "Throw-in_set_piece": "Saque de banda"}
+    
+        # Mapeamos los valores originales a los nombres amigables para el filtro
+        available_play_types = sorted(df_page_filtered['play_type'].dropna().unique())
+        mapped_options = {play_type_map.get(pt, pt): pt for pt in available_play_types}
+        
+        # Creamos una lista de opciones únicas para mostrar en el selectbox
+        display_options = sorted(list(set(mapped_options.keys())))
+        
+        play_type_display = st.selectbox('Filtrar por tipo de jugada', ["Todos"] + display_options)
 
     with col3:
         goal_only_filter = st.checkbox('Solo posesiones con gol recibido')
@@ -117,9 +132,16 @@ with st.expander("Filtros y Estadísticas", expanded=True):
         )
 
 # Aplicar filtros al dataframe
-if play_type_name != "Todos":
-    poss_with_play_type = df_page_filtered[df_page_filtered['play_type'] == play_type_name]['Posesion'].unique()
-    df_page_filtered = df_page_filtered[df_page_filtered['Posesion'].isin(poss_with_play_type)]
+if play_type_display != "Todos":
+    # Mapeo inverso: encontrar las claves originales para el valor amigable seleccionado
+    original_values_to_filter = [k for k, v in play_type_map.items() if v == play_type_display]
+    
+    # Si no se encuentra en el mapa (porque es un valor original), usarlo directamente
+    if not original_values_to_filter:
+        original_values_to_filter = [play_type_display]
+
+    play_type_posesiones = df_page_filtered[df_page_filtered['play_type'].isin(original_values_to_filter)]['Posesion'].unique()
+    df_page_filtered = df_page_filtered[df_page_filtered['Posesion'].isin(play_type_posesiones)]
 
 if goal_only_filter:
     goal_posesiones = df_page_filtered[df_page_filtered['NaEventType'] == 'Goal']['Posesion'].unique()
