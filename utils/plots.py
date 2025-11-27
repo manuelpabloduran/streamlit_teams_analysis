@@ -975,7 +975,7 @@ def plot_offensive_dashboard(df, team_name):
 
     return fig
 
-def plot_pass_matrix(df, team_name, min_x=0):
+def plot_pass_matrix(df, team_name, x_range=(0, 100), y_range=(0, 100)):
     """
     Crea una matriz de pases (heatmap) para un equipo, con opción de filtrar por zona.
     """
@@ -987,12 +987,13 @@ def plot_pass_matrix(df, team_name, min_x=0):
         (df['receiving_player'].notna()) &
         (df['receiving_player'] != '') &
         (df['receiving_player'] != 'null') &
-        (df['x'] > min_x)
+        (df['x'].between(x_range[0], x_range[1])) &
+        (df['y'].between(y_range[0], y_range[1]))
     )
     df_passes = df[mask].copy()
 
     if df_passes.empty:
-        st.warning(f"⚠️ No hay datos de pases para {team_name} con los filtros aplicados (min_x={min_x}).")
+        st.warning(f"⚠️ No hay datos de pases para {team_name} con los filtros aplicados (x_range={x_range}, y_range={y_range}).")
         return None
 
     # 2. Crear la matriz de pases
@@ -1075,7 +1076,8 @@ def plot_pass_matrix(df, team_name, min_x=0):
     plt.tight_layout()
     return fig
 
-def plot_pass_xg_matrix(df, team_name, min_x=0):
+
+def plot_pass_xg_matrix(df, team_name, x_range=(0, 100), y_range=(0, 100)):
     """
     Crea una matriz de pases ponderada por el xG de la posesión.
     """
@@ -1100,7 +1102,8 @@ def plot_pass_xg_matrix(df, team_name, min_x=0):
         (df_team['receiving_player'] != '') &
         (df_team['receiving_player'] != 'null') &
         (df_team['possession_xg'].notna()) & # Solo pases en posesiones con xG
-        (df_team['x'] > min_x)
+        (df_team['x'].between(x_range[0], x_range[1])) &
+        (df_team['y'].between(y_range[0], y_range[1]))
     )
     df_passes_xg = df_team[mask].copy()
 
@@ -1108,7 +1111,7 @@ def plot_pass_xg_matrix(df, team_name, min_x=0):
     df_passes_xg = df_passes_xg.drop_duplicates(subset=['Posesion', 'NaPlayer', 'receiving_player'])
 
     if df_passes_xg.empty:
-        st.warning(f"⚠️ No hay datos de pases en posesiones con xG para {team_name} con los filtros aplicados (min_x={min_x}).")
+        st.warning(f"⚠️ No hay datos de pases en posesiones con xG para {team_name} con los filtros aplicados (x_range={x_range}, y_range={y_range}).")
         return None
 
     # 3. Crear la matriz de pases de xG
@@ -1168,7 +1171,7 @@ def plot_pass_xg_matrix(df, team_name, min_x=0):
                     ha='center', va='center', color=text_color, size=9)
 
     # 8. Estilizar el gráfico
-    ax.set_title(f"Matriz de Pases de xG - {team_name}" + (f" (x > {min_x})" if min_x > 0 else ""), color='white', fontsize=16)
+    ax.set_title(f"Matriz de Pases de xG - {team_name}", color='white', fontsize=16)
     ax.set_xlabel("Receptor", color='white', fontsize=12)
     ax.set_ylabel("Pasador", color='white', fontsize=12)
     plt.xticks(rotation=45, ha='right', color='white')
