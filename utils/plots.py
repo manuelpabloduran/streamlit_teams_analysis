@@ -1511,15 +1511,15 @@ def plot_area_entry_passes(
     # --------- Colores ----------
     COLORS = {
         "Saque de banda": "#F4D03F", # amarillo
-        "Saque de falta": "#5DADE2", # azul claro
+        "Saque de falta": "#EE9559", # azul claro
         "Centro Raso":   "#E74C3C", # rojo
         "Cutback":      "#C2185B",  # magenta
         "Dividido":     "#5555AA",  # azul grisáceo
         "Pase Profundo": "#000000",  # negro
-        "Centro Cerrado":   "#2ECC71",  # verde
-        "Centro Abierto":    "#1976D2",  # azul más oscuro
+        "Centro Cerrado":   "#7AE7A7",  # verde
+        "Centro Abierto":    "#0A6611",  # azul más oscuro
         "Balón Largo":    "#8D6E63",  # marrón
-        "Apoyo":      "#FF8C00",  # naranja
+        "Apoyo":      "#747372",  # naranja
         "Other":        "#BD73DC",  # violeta
     }
 
