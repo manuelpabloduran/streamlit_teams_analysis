@@ -1730,6 +1730,7 @@ def plot_area_entry_by_corridor(
         (dfp[filter_col] == team_name) &
         (dfp["NaEventType"] == "Pass") &
         (dfp["corner_taken"].isna()) &
+        (dfp["corner_taken"] != "-1") &
         (dfp["Outcome"] == 1)        # pase correcto
     ].copy()
 
