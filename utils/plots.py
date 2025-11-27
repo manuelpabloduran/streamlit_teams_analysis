@@ -1338,7 +1338,7 @@ def plot_area_entries_team(
             (d["corner_taken"] != "-1") &                 # excluir corners (ajusta si cambia)
             (d["corner_taken"].isna()) &
             (d["Outcome"].eq(1)) &                        # acción exitosa
-            (d["NaEventType"] == "Pass") &
+            ((d["NaEventType"] == "Pass")| (d["NaEventType"] == "BallDrive")) &
             (d["end_x"] >= box_end_x) &                   # termina dentro del área en x
             (d["end_y"] >= box_end_y_low) &
             (d["end_y"] <= box_end_y_high) &              # termina dentro del área en y
@@ -1548,7 +1548,7 @@ def plot_area_entry_passes(
     dfp = df.copy()
     dfp = dfp[
         (dfp[filter_col] == team_name) &
-        ((dfp["NaEventType"] == "Pass")| (dfp["NaEventType"] == "BallDrive")) &
+        (dfp["NaEventType"] == "Pass") &
         (dfp["corner_taken"].isna()) &
         (dfp["Outcome"] == 1)                               # pase correcto
     ].copy()
