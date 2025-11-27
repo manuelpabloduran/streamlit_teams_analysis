@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from utils.plots import plot_team_progression_with_hist, plot_offensive_sequences, plot_player_xg_xgot, plot_goals_sunburst, plot_offensive_dashboard, plot_goal_actions_bar, plot_pass_matrix, plot_pass_xg_matrix, plot_area_entries_team, plot_area_entry_passes, plot_area_entry_by_corridor, plot_distribution_comparison, plot_area_entry_drives, plot_area_entry_drives_by_corridor
+from utils.plots import plot_team_progression_with_hist, plot_offensive_sequences, plot_player_xg_xgot, plot_goals_sunburst, plot_offensive_dashboard, plot_goal_actions_bar, plot_pass_matrix, plot_pass_xg_matrix, plot_area_entries_team, plot_rival_half_entries_team, plot_area_entry_passes, plot_area_entry_by_corridor, plot_distribution_comparison, plot_area_entry_drives, plot_area_entry_drives_by_corridor
 from streamlit_plotly_events import plotly_events
 
 st.set_page_config(layout="wide")
@@ -417,14 +417,26 @@ if team_name:
         else:
             st.warning(f"No se pudo generar la matriz de pases de xG para {team_name} con los filtros actuales.")
 
-    st.header("Entradas al Área Rival")
+    st.header("Entradas al Área y Campo Rival")
 
-    # El segundo y tercer valor de retorno no los usamos aquí.
-    fig_area_entries, _, _ = plot_area_entries_team(df_page_filtered, team_name)
-    if fig_area_entries:
-        st.pyplot(fig_area_entries, use_container_width=True)
-    else:
-        st.warning("No se pudo generar el gráfico de entradas al área del equipo.")
+    col_entries1, col_entries2 = st.columns(2)
+
+    with col_entries1:
+        st.subheader("Ingresos a Campo Rival")
+        fig_rival_half_entries, _, _ = plot_rival_half_entries_team(df_page_filtered, team_name)
+        if fig_rival_half_entries:
+            st.pyplot(fig_rival_half_entries, use_container_width=True)
+        else:
+            st.warning("No se pudo generar el gráfico de ingresos a campo rival.")
+    
+    
+    with col_entries2:
+        st.subheader("Ingresos al Área Rival")
+        fig_area_entries, _, _ = plot_area_entries_team(df_page_filtered, team_name)
+        if fig_area_entries:
+            st.pyplot(fig_area_entries, use_container_width=True)
+        else:
+            st.warning("No se pudo generar el gráfico de entradas al área del equipo.")
 
 
     col_entry1, col_entry2 = st.columns(2)

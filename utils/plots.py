@@ -1342,6 +1342,83 @@ def plot_area_entries_team(
         "y_edges": y_edges,
     }
 
+def plot_rival_half_entries_team(
+    df,
+    team_name,
+    title="Ingresos a Campo Rival",
+    x_bands=(50.0, 65.5, 83, 100),
+    pasillo_edges=(0.0, 21.0, 37.0, 63.0, 79.0, 100),
+    rect_color="#4CAF50",
+    line_color="white",
+    bg_color="#22312b",
+    show_counts=True,
+    count_threshold=1,
+    label_fontsize=14,
+    figsize=(8, 6),
+):
+    """
+    Heatmap discreto de dónde ingresa a campo rival un equipo.
+    """
+    df_team = df[df["TeamName"] == team_name].copy()
+    if df_team.empty:
+        fig, ax = plt.subplots(figsize=figsize)
+        pitch = Pitch(pitch_type="opta", pitch_color=bg_color, line_color=line_color)
+        pitch.draw(ax=ax)
+        ax.set_title(f"{team_name} – Sin datos", color="white")
+        return fig, pd.DataFrame(), None
+
+    # Filtro: pases desde campo propio a campo rival
+    ok = (
+        (df_team["x"] <= 50) &
+        (df_team["end_x"] > 50) &
+        (df_team["NaEventType"] == "Pass") &
+        (df_team["Outcome"] == 1)
+    )
+    df_entries = df_team.loc[ok].copy()
+
+    fig, ax = plt.subplots(figsize=figsize)
+    fig.set_facecolor(bg_color)
+    pitch = Pitch(pitch_type="opta", pitch_color=bg_color, line_color=line_color)
+    pitch.draw(ax=ax)
+
+    if df_entries.empty:
+        ax.set_title(f"{team_name} – Sin ingresos a campo rival", color="white")
+        return fig, df_entries, None
+
+    x_edges = np.array(x_bands, dtype=float)
+    y_edges = np.array(pasillo_edges, dtype=float)
+
+    # Contar por end_x y end_y
+    counts = np.histogram2d(df_entries['end_x'], df_entries['end_y'], bins=[x_edges, y_edges])[0].T
+
+    total_entries = int(counts.sum())
+    max_c = counts.max() if counts.size and counts.max() > 0 else 1
+
+    for i in range(len(y_edges) - 1):
+        for j in range(len(x_edges) - 1):
+            c = counts[i, j]
+            if c > 0:
+                x0, x1 = float(x_edges[j]), float(x_edges[j+1])
+                y0, y1 = float(y_edges[i]), float(y_edges[i+1])
+                dx, dy = x1 - x0, y1 - y0
+                alpha = (c / max_c) * 0.95
+                ax.add_patch(
+                    plt.Rectangle((x0, y0), dx, dy, facecolor=rect_color, edgecolor="none", alpha=alpha, zorder=1)
+                )
+                if show_counts and c >= count_threshold:
+                    ax.text(
+                        x0 + dx / 2, y0 + dy / 2, f"{int(c)}",
+                        ha="center", va="center", fontsize=label_fontsize, color="white", fontweight="bold", zorder=3,
+                        path_effects=[pe.Stroke(linewidth=3.5, foreground="black", alpha=0.95), pe.Normal()],
+                    )
+
+    ax.set_title(f"{team_name} – {title}\n(Total: {total_entries})", fontsize=18, color="white", fontweight="bold")
+    ax.set_xlim(-2, 107)
+    ax.set_ylim(-3, 103)
+
+    return fig, df_entries, {"grid": counts, "total_entries": total_entries, "x_edges": x_edges, "y_edges": y_edges}
+
+
 def plot_area_entry_passes(
     df,
     team_name,
@@ -1658,7 +1735,7 @@ def plot_area_entry_by_corridor(
     )
 
     plt.tight_layout()
-    return fig
+    return fig, dfp
 
 def plot_distribution_comparison(df, team_name, column, title, xaxis_title):
     """
