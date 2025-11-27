@@ -977,6 +977,108 @@ def plot_offensive_dashboard(df, team_name, filter_col='TeamName'):
 
     return fig
 
+
+def plot_xg_actions_bar(df, team_name="Racing de Santander", filter_col='TeamName'):
+    """
+    Calcula el xG acumulado para las posesiones que incluyen cada tipo de acción.
+    Se basa en la lógica de `plot_goal_actions_bar` pero suma xG en lugar de contar goles.
+    """
+    try:
+        # 1. Usar una función auxiliar para obtener los flags de acción por posesión.
+        #    Esta función es una adaptación de `summarize_goal_possessions` para
+        #    trabajar sobre todas las posesiones con tiro, no solo las de gol.
+        
+        # 1a. Filtrar equipo
+        df_team = df[df[filter_col] == team_name].copy()
+
+        # 1b. Posesiones que terminan en TIRO (tienen xg)
+        shot_possessions = df_team.loc[df_team['xg'].notna(), 'Posesion'].unique()
+        if len(shot_possessions) == 0:
+            raise ValueError(f"No hay posesiones con tiro para {team_name}")
+
+        # 1c. Quedarnos solo con eventos de esas posesiones
+        df_pos_shot = df_team[df_team['Posesion'].isin(shot_possessions)].copy()
+
+        # 1d. Reutilizar la función `flag_actions` de `summarize_goal_possessions`
+        #     para no duplicar código.
+        def flag_actions(g):
+            return pd.Series({
+                "Incluye Balón Largo": (g['long_ball'].notna() & g['chipped'].notna() & g['cross'].isna()).any(),
+                "Incluye Balón Largo Raso": (g['long_ball'].notna() & g['chipped'].isna() & g['cross'].isna()).any(),
+                "Pase a la profundidad": g['through_ball'].notna().any(),
+                "Apoyo": g['lay_off'].notna().any(),
+                "1 vs 1": (g['1_on_1'] == 1).any(),
+                "A un toque": (g['First_Touch'] == -1).any(),
+                "No asistido": (g['Individual_Play'] == 1).any(),
+                "Cutback": (g['cutback'] == 1).any(),
+                "Pase Dividido": (g['dividido'] == 1).any(),
+                "Panenka": (g['Panenka'] == -1).any(),
+                "Desviado": (g['Deflection'] == -1).any(),
+                "Recuperación rápida tras pérdida": (g['counterpress_5s_flag'] == 1).any(),
+                "Saque de Banda": (g['throw_in'] == -1).any(),
+                "Saque de Falta": ((g['Set_piece'] == 1) | (g['Free_kick'] == 1)).any(),
+                "Centro temprano": ((g['cross'].notna()) & (g['x'] < 75)).any(),
+                "Centro abierto": ((g['cross'].notna()) & (g['x'] >= 75) & g['out_swing'].notna() & g['chipped'].notna()).any(),
+                "Centro cerrado": ((g['cross'].notna()) & (g['x'] >= 75) & g['in_swinger'].notna() & g['chipped'].notna()).any(),
+                "Centro raso": ((g['cross'].notna()) & (g['x'] >= 75) & g['chipped'].isna()).any(),
+            })
+
+        per_pos_actions = df_pos_shot.groupby('Posesion').apply(flag_actions).astype(bool)
+
+    except ValueError as e:
+        st.warning(f"⚠️ {e}")
+        return None
+
+    # 2. Obtener el xG total por posesión y unirlo a los flags
+    possession_xg = df_pos_shot.groupby('Posesion')['xg'].sum()
+    per_pos_actions['possession_xg'] = per_pos_actions.index.map(possession_xg)
+
+    # 3. Calcular el xG acumulado por cada tipo de acción
+    xg_by_action = {}
+    action_cols = [col for col in per_pos_actions.columns if col != 'possession_xg']
+
+    for action in action_cols:
+        # Sumar el 'possession_xg' solo de las posesiones donde la acción es True
+        total_xg_for_action = per_pos_actions.loc[per_pos_actions[action], 'possession_xg'].sum()
+        if total_xg_for_action > 0:
+            xg_by_action[action] = total_xg_for_action
+    
+    if not xg_by_action:
+        st.warning(f"⚠️ No se encontró xG asociado a acciones destacadas para {team_name}.")
+        return None
+
+    # 4. Crear el gráfico de barras
+    df_xg_counts = pd.DataFrame.from_dict(xg_by_action, orient='index', columns=['total_xg'])
+    df_xg_counts = df_xg_counts.rename_axis("Acción").reset_index()
+    df_xg_counts = df_xg_counts.sort_values('total_xg', ascending=True)
+
+    fig = px.bar(
+        df_xg_counts,
+        x="total_xg",
+        y="Acción",
+        orientation="h",
+        text="total_xg",
+        template="plotly_white",
+    )
+
+    fig.update_traces(
+        hovertemplate=(
+            "%{y}<br>" +
+            "xG Acumulado: %{x:.2f}<extra></extra>"
+        ),
+        texttemplate='%{x:.2f}',
+        textposition="outside"
+    )
+
+    fig.update_layout(
+        title=f"{team_name} – xG acumulado por tipo de acción en la posesión",
+        xaxis_title="xG Acumulado",
+        yaxis_title="",
+        margin=dict(l=120, r=30, t=80, b=30),
+    )
+
+    return fig
+
 def plot_pass_matrix(df, team_name, filter_col='TeamName', x_range=(0, 100), y_range=(0, 100)):
     """
     Crea una matriz de pases (heatmap) para un equipo, con opción de filtrar por zona.
