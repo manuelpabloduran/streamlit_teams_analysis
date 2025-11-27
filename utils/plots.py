@@ -1705,3 +1705,158 @@ def plot_distribution_comparison(df, team_name, column, title, xaxis_title):
 
     return fig
 
+def plot_area_entry_drives(
+    df,
+    team_name,
+    title_prefix="Ingresos al área por Conducción",
+    box_min_x=83.0,
+    box_y_low=21.1,
+    box_y_high=78.9,
+):
+    """
+    Dibuja las conducciones que suponen un ingreso al área rival para un equipo dado.
+    """
+    dfp = df.copy()
+    dfp = dfp[
+        (dfp["TeamName"] == team_name) &
+        (dfp["NaEventType"] == "BallDrive") &
+        (dfp["Outcome"] == 1)
+    ].copy()
+
+    for c in ["x", "y", "end_x", "end_y"]:
+        if c in dfp.columns:
+            dfp[c] = pd.to_numeric(dfp[c], errors="coerce")
+
+    in_box_end = (
+        (dfp["end_x"] >= box_min_x) &
+        (dfp["end_y"] >= box_y_low) &
+        (dfp["end_y"] <= box_y_high)
+    )
+    from_outside_box = ~(
+        (dfp["x"] >= box_min_x) &
+        (dfp["y"] >= box_y_low) &
+        (dfp["y"] <= box_y_high)
+    )
+    dfp = dfp[in_box_end & from_outside_box].copy()
+
+    if dfp.empty:
+        print(f"⚠️ No hay ingresos al área por conducción para {team_name} con los filtros actuales.")
+        return None, dfp
+
+    pitch = Pitch(pitch_type="opta", stripe=False)
+    fig, ax = pitch.draw(figsize=(12, 7))
+
+    pitch.lines(
+        dfp["x"], dfp["y"], dfp["end_x"], dfp["end_y"],
+        color="#BD73DC",
+        comet=True,
+        transparent=True,
+        alpha_start=0.10,
+        alpha_end=0.30,
+        ax=ax,
+        ls='dotted' # Estilo de línea punteada
+    )
+    pitch.scatter(
+        dfp["end_x"], dfp["end_y"],
+        ax=ax,
+        facecolor="white",
+        edgecolor="#BD73DC",
+        linewidth=1.2,
+        s=24,
+        zorder=4,
+    )
+
+    legend_items = [Line2D([0], [0], color="#BD73DC", lw=2, ls='dotted', label='Conducción')]
+    ax.legend(handles=legend_items, loc="lower left", frameon=True, facecolor="white", edgecolor="none", fontsize=11)
+
+    ax.set_title(
+        f"{title_prefix} — {team_name}\nIngresos al área: N={len(dfp)}",
+        fontsize=14,
+    )
+    plt.tight_layout()
+    return fig, dfp
+
+def plot_area_entry_drives_by_corridor(
+    df,
+    team_name,
+    title_prefix="Ingresos al área por conducción por pasillo de origen",
+    box_min_x=83.0,
+    box_y_low=21,
+    box_y_high=79,
+):
+    """
+    Dibuja las conducciones que suponen un ingreso al área rival, coloreadas por pasillo de origen.
+    """
+    pasillos_y = {
+        "Pasillo Central": (37, 63), "Pasillo Interior Izquierdo": (63, 79),
+        "Pasillo Interior Derecho": (21, 37), "Pasillo Exterior Izquierdo": (79, 102),
+        "Pasillo Exterior Derecho": (0, 21),
+    }
+    PASILLO_COLORS = {
+        "Pasillo Central": "#FDD835", "Pasillo Interior Izquierdo": "#43A047",
+        "Pasillo Interior Derecho": "#1E88E5", "Pasillo Exterior Izquierdo": "#e53935",
+        "Pasillo Exterior Derecho": "#8E24AA",
+    }
+
+    dfp = df.copy()
+    dfp = dfp[
+        (dfp["TeamName"] == team_name) &
+        (dfp["NaEventType"] == "BallDrive") &
+        (dfp["Outcome"] == 1)
+    ].copy()
+
+    for c in ["x", "y", "end_x", "end_y"]:
+        if c in dfp.columns:
+            dfp[c] = pd.to_numeric(dfp[c], errors="coerce")
+
+    in_box_end = (
+        (dfp["end_x"] >= box_min_x) & (dfp["end_y"] >= box_y_low) & (dfp["end_y"] <= box_y_high)
+    )
+    from_outside_box = ~(
+        (dfp["x"] >= box_min_x) & (dfp["y"] >= box_y_low) & (dfp["y"] <= box_y_high)
+    )
+    dfp = dfp[in_box_end & from_outside_box].copy()
+
+    if dfp.empty:
+        print(f"⚠️ No hay ingresos al área por conducción para {team_name} con los filtros actuales.")
+        return None, dfp
+
+    def assign_corridor(y):
+        for name, (y_min, y_max) in pasillos_y.items():
+            if (y >= y_min) and (y < y_max):
+                return name
+        return None
+
+    dfp["corridor"] = dfp["y"].apply(assign_corridor)
+    dfp = dfp[dfp["corridor"].notna()].copy()
+
+    if dfp.empty:
+        print(f"⚠️ No hay ingresos por conducción con pasillo identificable para {team_name}.")
+        return None, dfp
+
+    pitch = Pitch(pitch_type="opta", stripe=False)
+    fig, ax = pitch.draw(figsize=(12, 7))
+
+    corridor_order = list(pasillos_y.keys())
+    for corridor_name in corridor_order:
+        dfk = dfp[dfp["corridor"] == corridor_name]
+        if dfk.empty:
+            continue
+        color = PASILLO_COLORS.get(corridor_name, "#000000")
+        pitch.lines(
+            dfk["x"], dfk["y"], dfk["end_x"], dfk["end_y"],
+            color=color, comet=True, transparent=True,
+            alpha_start=0.10, alpha_end=0.30, ax=ax, ls='dotted'
+        )
+        pitch.scatter(
+            dfk["end_x"], dfk["end_y"], ax=ax, facecolor="white",
+            edgecolor=color, linewidth=1.2, s=24, zorder=4,
+        )
+
+    legend_items = [Line2D([0], [0], color=PASILLO_COLORS[name], lw=2, ls='dotted', label=name) for name in corridor_order]
+    ax.legend(handles=legend_items, loc="lower right", frameon=True, facecolor="white", edgecolor="none", fontsize=10)
+
+    total_entries = len(dfp)
+    ax.set_title(f"{title_prefix} — {team_name}\nIngresos al área: N={total_entries}", fontsize=14)
+    plt.tight_layout()
+    return fig, dfp
