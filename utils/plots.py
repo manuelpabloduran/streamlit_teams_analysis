@@ -1878,39 +1878,51 @@ def plot_area_entry_drives(
 ):
     """
     Dibuja las conducciones que suponen un ingreso al área rival para un equipo dado, originadas en campo rival.
+    La opacidad de la línea varía según el 'possession_xg'.
     """
     dfp = df.copy()
     dfp = dfp[
         (dfp[filter_col] == team_name) &
         (dfp["NaEventType"] == "BallDrive") &
-        (dfp["x"] > 50) &  # <--- AÑADIDO: Filtrar por inicio en campo rival
+        (dfp["x"] > 50) &
         (dfp["end_x"] > dfp["x"]) &
         (dfp["Outcome"] == 1)
     ].copy()
 
-    for c in ["x", "y", "end_x", "end_y"]:
+    for c in ["x", "y", "end_x", "end_y", "possession_xg"]:
         if c in dfp.columns:
             dfp[c] = pd.to_numeric(dfp[c], errors="coerce")
 
-
-
     if dfp.empty:
-        print(f"⚠️ No hay ingresos al área por conducción desde campo rival para {team_name} con los filtros actuales.")
+        print(f"⚠️ No hay conducciones en campo rival para {team_name} con los filtros actuales.")
         return None, dfp
+
+    # Normalizar possession_xg para usarlo como alpha (opacidad)
+    # Se suma un pequeño epsilon para evitar división por cero si todos los xg son iguales.
+    min_xg = dfp['possession_xg'].min()
+    max_xg = dfp['possession_xg'].max()
+    if max_xg > min_xg:
+        dfp['alpha'] = 0.2 + 0.8 * (dfp['possession_xg'] - min_xg) / (max_xg - min_xg)
+    else:
+        dfp['alpha'] = 0.5 # Usar un alpha fijo si no hay variación
+
+    dfp['alpha'] = dfp['alpha'].fillna(0.2) # Rellenar NaNs con un alpha bajo
 
     pitch = Pitch(pitch_type="opta", stripe=False)
     fig, ax = pitch.draw(figsize=(12, 7))
 
-    pitch.lines(
-        dfp["x"], dfp["y"], dfp["end_x"], dfp["end_y"],
-        color="#BD73DC",
-        comet=True,
-        transparent=True,
-        alpha_start=0.10,
-        alpha_end=0.30,
-        ax=ax,
-        ls='dotted' # Estilo de línea punteada
-    )
+    # Iterar sobre cada conducción para dibujarla con su alpha correspondiente
+    for row in dfp.itertuples():
+        pitch.lines(
+            row.x, row.y, row.end_x, row.end_y,
+            color="#BD73DC",
+            lw=2, # Ancho de línea fijo
+            alpha=row.alpha, # Usar el alpha calculado
+            ax=ax,
+            zorder=3
+        )
+
+    # Dibujar los puntos finales de las conducciones
     pitch.scatter(
         dfp["end_x"], dfp["end_y"],
         ax=ax,
@@ -1921,7 +1933,7 @@ def plot_area_entry_drives(
         zorder=4,
     )
 
-    legend_items = [Line2D([0], [0], color="#BD73DC", lw=2, ls='dotted', label='Conducción')]
+    legend_items = [Line2D([0], [0], color="#BD73DC", lw=2, label='Conducción (opacidad por xG)')]
     ax.legend(handles=legend_items, loc="lower left", frameon=True, facecolor="white", edgecolor="none", fontsize=11)
 
     ax.set_title(
