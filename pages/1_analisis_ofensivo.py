@@ -417,6 +417,16 @@ if team_name:
         else:
             st.warning(f"No se pudo generar la matriz de pases de xG para {team_name} con los filtros actuales.")
 
+    st.header("Entradas al Área Rival")
+
+    # El segundo y tercer valor de retorno no los usamos aquí.
+    fig_area_entries, _, _ = plot_area_entries_team(df_page_filtered, team_name)
+    if fig_area_entries:
+        st.pyplot(fig_area_entries, use_container_width=True)
+    else:
+        st.warning("No se pudo generar el gráfico de entradas al área del equipo.")
+
+
     col_entry1, col_entry2 = st.columns(2)
     with col_entry1:
         # El segundo valor de retorno es el dataframe filtrado, que no usamos aquí.
