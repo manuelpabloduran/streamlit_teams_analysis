@@ -360,9 +360,44 @@ if team_name:
 
     st.header("Progresiones")
 
-    # Sliders para filtrar por coordenadas
-    x_range_pass = st.slider("Filtro Profundidad", 0, 100, (0, 100))
-    y_range_pass = st.slider("Filtro Anchura", 0, 100, (0, 100))
+    # --- Indicadores para el eje X (Profundidad) ---
+    st.markdown("<h6>Indicadores de Profundidad (Eje X)</h6>", unsafe_allow_html=True)
+    # Usamos columnas para simular la posición sobre el slider. Los anchos son aproximados.
+    c1, c2, c3, c4, c5, c6 = st.columns([50, 16, 9, 8, 8, 9])
+    with c2:
+        st.markdown('<div style="text-align: center; font-size: 12px; border-left: 1px solid grey;">Mitad Campo</div>', unsafe_allow_html=True)
+    with c3:
+        st.markdown('<div style="text-align: center; font-size: 12px; border-left: 1px solid grey;">Tercio Final</div>', unsafe_allow_html=True)
+    with c4:
+        st.markdown('<div style="text-align: center; font-size: 12px; border-left: 1px solid grey;">Cuarto Final</div>', unsafe_allow_html=True)
+    with c5:
+        st.markdown('<div style="text-align: center; font-size: 12px; border-left: 1px solid grey;">Área Rival</div>', unsafe_allow_html=True)
+
+    x_range_pass = st.slider("Filtro Profundidad", 0, 100, (0, 100), label_visibility="collapsed")
+
+    # --- Indicadores para el eje Y (Anchura) ---
+    st.markdown("<h6>Indicadores de Anchura (Eje Y) - Pasillos</h6>", unsafe_allow_html=True)
+    pasillos_y_def = {
+        "Ext. Derecho": (0, 21, "#8E24AA"),
+        "Int. Derecho": (21, 37, "#1E88E5"),
+        "Central": (37, 63, "#FDD835"),
+        "Int. Izquierdo": (63, 79, "#43A047"),
+        "Ext. Izquierdo": (79, 100, "#e53935"),
+    }
+    
+    # Calculamos los anchos de las columnas basados en el ancho de los pasillos
+    widths = [p[1] - p[0] for p in pasillos_y_def.values()]
+    cols = st.columns(widths)
+    
+    for col, (name, (y_min, y_max, color)) in zip(cols, pasillos_y_def.items()):
+        with col:
+            st.markdown(
+                f'<div style="background-color: {color}; color: black; text-align: center; border-radius: 5px; padding: 5px 0; font-size: 12px; font-weight: bold;">{name}</div>',
+                unsafe_allow_html=True
+            )
+
+    y_range_pass = st.slider("Filtro Anchura", 0, 100, (0, 100), label_visibility="collapsed")
+
 
     col_matrix1, col_matrix2 = st.columns(2)
 
@@ -381,14 +416,6 @@ if team_name:
             st.pyplot(fig_pass_xg_matrix, use_container_width=True)
         else:
             st.warning(f"No se pudo generar la matriz de pases de xG para {team_name} con los filtros actuales.")
-
-    st.markdown("---")
-    st.header("Entradas al Área Rival")
-    fig_area_entries, _, _ = plot_area_entries_team(df_page_filtered, team_name)
-    if fig_area_entries:
-        st.pyplot(fig_area_entries, use_container_width=True)
-    else:
-        st.warning(f"No se pudo generar el gráfico de entradas al área para {team_name}.")
 
     col_entry1, col_entry2 = st.columns(2)
     with col_entry1:
