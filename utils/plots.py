@@ -1708,18 +1708,16 @@ def plot_distribution_comparison(df, team_name, column, title, xaxis_title):
 def plot_area_entry_drives(
     df,
     team_name,
-    title_prefix="Ingresos al área por Conducción",
-    box_min_x=83.0,
-    box_y_low=21.1,
-    box_y_high=78.9,
+    title_prefix="Conducciones en Campo Rival"
 ):
     """
-    Dibuja las conducciones que suponen un ingreso al área rival para un equipo dado.
+    Dibuja las conducciones que suponen un ingreso al área rival para un equipo dado, originadas en campo rival.
     """
     dfp = df.copy()
     dfp = dfp[
         (dfp["TeamName"] == team_name) &
         (dfp["NaEventType"] == "BallDrive") &
+        (dfp["x"] > 50) &  # <--- AÑADIDO: Filtrar por inicio en campo rival
         (dfp["Outcome"] == 1)
     ].copy()
 
@@ -1727,20 +1725,10 @@ def plot_area_entry_drives(
         if c in dfp.columns:
             dfp[c] = pd.to_numeric(dfp[c], errors="coerce")
 
-    in_box_end = (
-        (dfp["end_x"] >= box_min_x) &
-        (dfp["end_y"] >= box_y_low) &
-        (dfp["end_y"] <= box_y_high)
-    )
-    from_outside_box = ~(
-        (dfp["x"] >= box_min_x) &
-        (dfp["y"] >= box_y_low) &
-        (dfp["y"] <= box_y_high)
-    )
-    dfp = dfp[in_box_end & from_outside_box].copy()
+
 
     if dfp.empty:
-        print(f"⚠️ No hay ingresos al área por conducción para {team_name} con los filtros actuales.")
+        print(f"⚠️ No hay ingresos al área por conducción desde campo rival para {team_name} con los filtros actuales.")
         return None, dfp
 
     pitch = Pitch(pitch_type="opta", stripe=False)
@@ -1770,7 +1758,7 @@ def plot_area_entry_drives(
     ax.legend(handles=legend_items, loc="lower left", frameon=True, facecolor="white", edgecolor="none", fontsize=11)
 
     ax.set_title(
-        f"{title_prefix} — {team_name}\nIngresos al área: N={len(dfp)}",
+        f"{title_prefix} — {team_name}\nTotal: N={len(dfp)}",
         fontsize=14,
     )
     plt.tight_layout()
@@ -1779,13 +1767,10 @@ def plot_area_entry_drives(
 def plot_area_entry_drives_by_corridor(
     df,
     team_name,
-    title_prefix="Ingresos al área por conducción por pasillo de origen",
-    box_min_x=83.0,
-    box_y_low=21,
-    box_y_high=79,
+    title_prefix="Conducciones en Campo Rival por Pasillo"
 ):
     """
-    Dibuja las conducciones que suponen un ingreso al área rival, coloreadas por pasillo de origen.
+    Dibuja las conducciones que suponen un ingreso al área rival, coloreadas por pasillo de origen y originadas en campo rival.
     """
     pasillos_y = {
         "Pasillo Central": (37, 63), "Pasillo Interior Izquierdo": (63, 79),
@@ -1802,6 +1787,7 @@ def plot_area_entry_drives_by_corridor(
     dfp = dfp[
         (dfp["TeamName"] == team_name) &
         (dfp["NaEventType"] == "BallDrive") &
+        (dfp["x"] > 50) & # <--- AÑADIDO: Filtrar por inicio en campo rival
         (dfp["Outcome"] == 1)
     ].copy()
 
@@ -1809,16 +1795,8 @@ def plot_area_entry_drives_by_corridor(
         if c in dfp.columns:
             dfp[c] = pd.to_numeric(dfp[c], errors="coerce")
 
-    in_box_end = (
-        (dfp["end_x"] >= box_min_x) & (dfp["end_y"] >= box_y_low) & (dfp["end_y"] <= box_y_high)
-    )
-    from_outside_box = ~(
-        (dfp["x"] >= box_min_x) & (dfp["y"] >= box_y_low) & (dfp["y"] <= box_y_high)
-    )
-    dfp = dfp[in_box_end & from_outside_box].copy()
-
     if dfp.empty:
-        print(f"⚠️ No hay ingresos al área por conducción para {team_name} con los filtros actuales.")
+        print(f"⚠️ No hay ingresos al área por conducción desde campo rival para {team_name} con los filtros actuales.")
         return None, dfp
 
     def assign_corridor(y):
@@ -1857,6 +1835,6 @@ def plot_area_entry_drives_by_corridor(
     ax.legend(handles=legend_items, loc="lower right", frameon=True, facecolor="white", edgecolor="none", fontsize=10)
 
     total_entries = len(dfp)
-    ax.set_title(f"{title_prefix} — {team_name}\nIngresos al área: N={total_entries}", fontsize=14)
+    ax.set_title(f"{title_prefix} — {team_name}\nTotal: N={total_entries}", fontsize=14)
     plt.tight_layout()
     return fig, dfp
