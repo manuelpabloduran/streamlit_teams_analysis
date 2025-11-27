@@ -1481,6 +1481,19 @@ def plot_area_entry_passes(
             else pd.Series(False, index=df_local.index)
         )
 
+    def equals_val(df_local, col, val):
+        return (
+            (df_local[col] == val)
+            if col in df_local.columns
+            else pd.Series(False, index=df_local.index)
+        )
+
+    # Nuevas categorías con prioridad
+    is_throw_in = equals_val(dfp, "throw_in", -1)
+    is_free_kick = equals_val(dfp, "Free_kick", 1) | equals_val(dfp, "Set_piece", 1)
+    is_centro_raso = equals_val(dfp, "cross", -1) & dfp["chipped"].isna() if "cross" in dfp.columns and "chipped" in dfp.columns else pd.Series(False, index=dfp.index)
+
+    # Categorías existentes
     is_cutback  = (dfp["cutback"] == 1)   if "cutback" in dfp.columns  else pd.Series(False, index=dfp.index)
     is_dividido = (dfp["dividido"] == 1)  if "dividido" in dfp.columns else pd.Series(False, index=dfp.index)
     is_through  = notna_col(dfp, "through_ball")
@@ -1490,20 +1503,23 @@ def plot_area_entry_passes(
     is_layoff   = notna_col(dfp, "lay_off")
 
     dfp["assist_type"] = np.select(
-        [is_cutback, is_dividido, is_through, is_in, is_out, is_longball, is_layoff],
-        ["Cutback", "Dividido", "Through ball", "In-swinger", "Out-swing", "Long ball", "Lay-off"],
+        [is_throw_in, is_free_kick, is_centro_raso, is_cutback, is_dividido, is_through, is_in, is_out, is_longball, is_layoff],
+        ["Saque de banda", "Saque de falta", "Centro Raso", "Cutback", "Dividido", "Pase Profundo", "Centro Cerrado", "Centro Abierto", "Balón Largo", "Apoyo"],
         default="Other",
     )
 
     # --------- Colores ----------
     COLORS = {
+        "Saque de banda": "#F4D03F", # amarillo
+        "Saque de falta": "#5DADE2", # azul claro
+        "Centro Raso":   "#E74C3C", # rojo
         "Cutback":      "#C2185B",  # magenta
         "Dividido":     "#5555AA",  # azul grisáceo
-        "Through ball": "#000000",  # azul
-        "In-swinger":   "#2ECC71",  # verde
-        "Out-swing":    "#1976D2",  # azul más oscuro
-        "Long ball":    "#8D6E63",  # marrón
-        "Lay-off":      "#FF8C00",  # naranja
+        "Pase Profundo": "#000000",  # negro
+        "Centro Cerrado":   "#2ECC71",  # verde
+        "Centro Abierto":    "#1976D2",  # azul más oscuro
+        "Balón Largo":    "#8D6E63",  # marrón
+        "Apoyo":      "#FF8C00",  # naranja
         "Other":        "#BD73DC",  # violeta
     }
 
@@ -1512,9 +1528,9 @@ def plot_area_entry_passes(
     fig, ax = pitch.draw(figsize=(12, 7))
     #fig.set_facecolor("#EFE9E6")
 
-    categories = ["Cutback", "Dividido", "Through ball",
-                  "In-swinger", "Out-swing", "Long ball",
-                  "Lay-off", "Other"]
+    categories = ["Saque de banda", "Saque de falta", "Centro Raso", "Cutback", "Dividido", "Pase Profundo",
+                  "Centro Cerrado", "Centro Abierto", "Balón Largo",
+                  "Apoyo", "Other"]
 
     for key in categories:
         dfk = dfp[dfp["assist_type"] == key]
