@@ -82,7 +82,7 @@ df['cutback'] = np.where(((df["NaEventType"]=="Pass") &
                             ((df["NaEventType"]=="Pass") &
                              (df["finalizacion_area"]==1) &
                              (df["chipped"].isna()) &
-                             (df["outcome"]==1) &
+                             (df["Outcome"]==1) &
                              (df["x"]>80) &
                              (df["y"]>=63) &
                              (df["Angle"]>3.14) &
@@ -97,7 +97,7 @@ df['dividido'] = np.where(((df["NaEventType"]=="Pass") &
                             ((df["NaEventType"]=="Pass") &
                              (df["finalizacion_area"]==1) &
                              (df["chipped"].isna()) &
-                             (df["outcome"]==1) &
+                             (df["Outcome"]==1) &
                              (df["x"]>80) &
                              (df["y"]>=63) &
                              (df["Angle"]>4.71) &
