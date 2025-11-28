@@ -408,7 +408,7 @@ if team_name:
             if max_seconds > 0:
                 selected_seconds = st.slider(
                     "Filtrar por Segundos Previos",
-                    0.0, max_seconds, (0.0, max_seconds),
+                    0.0, 20.0, (0.0, 20.0),
                     format="%.1f"
                 )
                 df_page_filtered = df_page_filtered[df_page_filtered['segundos_previos'].between(selected_seconds[0], selected_seconds[1])]
