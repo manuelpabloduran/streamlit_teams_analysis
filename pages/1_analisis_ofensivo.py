@@ -42,6 +42,25 @@ df['IdTeam'] = np.where(
     df['IdTeam']
 )
 
+# --- Ordenar eventos cronológicamente dentro de cada posesión ---
+df = df.sort_values(by=['Posesion', 'time_seconds', 'IdFrame'])
+
+# --- Cálculo de acciones y segundos previos al final de la posesión ---
+# 1. Acciones previas (conteo inverso de eventos)
+# Se calcula el tamaño de cada grupo de posesión
+group_size = df.groupby('Posesion')['time_seconds'].transform('size')
+# Se numera cada evento dentro de su posesión (de 0 a N-1)
+event_number = df.groupby('Posesion').cumcount()
+# El conteo inverso es tamaño - 1 - numeración
+df['acciones_previas'] = group_size - 1 - event_number
+
+# 2. Segundos previos
+# Se obtiene el tiempo del último evento de cada posesión
+last_time_in_possession = df.groupby('Posesion')['time_seconds'].transform('max')
+# Se calcula la diferencia
+df['segundos_previos'] = last_time_in_possession - df['time_seconds']
+
+
 # --- Cálculo de variables adicionales (a nivel de evento) ---
 df['dx'] = df['end_x'] - df['x']
 df['dy'] = df['end_y'] - df['y']
@@ -368,6 +387,32 @@ if team_name:
         st.warning(f"No se pudo generar el dashboard de finalización para {team_name}.")
 
     st.header("Progresiones")
+
+    # --- Filtros de acciones y segundos previos ---
+    prog_col1, prog_col2 = st.columns(2)
+    with prog_col1:
+        # Asegurarse de que la columna existe y no está vacía antes de calcular el máximo
+        if 'acciones_previas' in df_page_filtered.columns and not df_page_filtered['acciones_previas'].empty:
+            max_actions = int(df_page_filtered['acciones_previas'].max())
+            if max_actions > 0:
+                selected_actions = st.slider(
+                    "Filtrar por Acciones Previas (0 = última acción)",
+                    0, max_actions, (0, max_actions)
+                )
+                df_page_filtered = df_page_filtered[df_page_filtered['acciones_previas'].between(selected_actions[0], selected_actions[1])]
+
+    with prog_col2:
+        # Asegurarse de que la columna existe y no está vacía
+        if 'segundos_previos' in df_page_filtered.columns and not df_page_filtered['segundos_previos'].empty:
+            max_seconds = float(df_page_filtered['segundos_previos'].max())
+            if max_seconds > 0:
+                selected_seconds = st.slider(
+                    "Filtrar por Segundos Previos",
+                    0.0, max_seconds, (0.0, max_seconds),
+                    format="%.1f"
+                )
+                df_page_filtered = df_page_filtered[df_page_filtered['segundos_previos'].between(selected_seconds[0], selected_seconds[1])]
+
 
     # --- Indicadores para el eje X (Profundidad) ---
     st.markdown("<h6>Indicadores de Profundidad (Eje X)</h6>", unsafe_allow_html=True)
