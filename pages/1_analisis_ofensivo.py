@@ -388,6 +388,11 @@ if team_name:
 
     st.header("Progresiones")
 
+    # --- Filtro de acciones progresivas ---
+    progressive_only_filter = st.checkbox('Solo acciones progresivas')
+    if progressive_only_filter:
+        df_page_filtered = df_page_filtered[df_page_filtered['end_x'] >= (df_page_filtered['x'] + 5)]
+
     # --- Filtros de acciones y segundos previos ---
     prog_col1, prog_col2 = st.columns(2)
     with prog_col1:
