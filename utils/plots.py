@@ -495,16 +495,21 @@ def plot_goals_sunburst(
         color_discrete_sequence=px.colors.qualitative.Safe
     )
 
-    # Texto dentro de cada sector: etiqueta + valor + %
+    if metric in ['goals', 'shots']:
+        value_format = '%{value:.0f}'
+    else:  # xg_sum
+        value_format = '%{value:.2f}'
+
     fig.update_traces(
         insidetextorientation='radial',
         texttemplate='%{label}<br>%{percentRoot:.1%}',
         hovertemplate=(
             '<b>%{label}</b><br>' +
-            f'{valor_label}: %{value:.2f}<br>' +
+            f'{valor_label}: {value_format}<br>' +
             'Porcentaje: %{percentRoot:.1%}<extra></extra>'
         )
     )
+
 
     fig.update_layout(
         title=f'{team_name} – {titulo_metric} por tipo de jugada, ubicación y parte del cuerpo',
