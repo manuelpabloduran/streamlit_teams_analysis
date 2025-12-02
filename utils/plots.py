@@ -395,7 +395,7 @@ def plot_goals_sunburst(
         shot_events = ['Attempt Saved', 'Miss', 'Post', 'Goal']
 
     # --- Filtro base por equipo y que no sea gol en propia puerta ---
-    base_mask = (df[filter_col] == team_name) & (df['own_goal'] != -1)
+    base_mask = (df[filter_col] == team_name) & (df['own_goal'] != -1) & (~df['xg'].isna())
 
     if metric == 'goals':
         df_sub = df[base_mask & (df['NaEventType'] == 'Goal')].copy()
