@@ -355,12 +355,28 @@ if team_name:
     else:
         st.warning(f"No se pudo generar el gráfico de xG/xGOT por jugador para {team_name}.")
 
-    # Sunburst en una fila propia
-    fig_sunburst, df_goles_es = plot_goals_sunburst(df_page_filtered, team_name)
-    if fig_sunburst:
-        st.plotly_chart(fig_sunburst, use_container_width=True)
-    else:
-        st.warning(f"No hay datos de goles para {team_name}.")
+    # --- SUNBURSTS EN UNA FILA (GOLES / TIROS / xG) ---
+    col1, col2, col3 = st.columns(3)
+
+    configs = [
+        ('goals',   'Goles'),
+        ('shots',   'Tiros'),
+        ('xg_sum',  'xG acumulado'),
+    ]
+
+    for col, (metric, label) in zip((col1, col2, col3), configs):
+        with col:
+            fig_sunburst, df_sub = plot_goals_sunburst(
+                df_page_filtered,
+                team_name=team_name,
+                metric=metric,        # <-- cambia la métrica
+                # xg_col='xg'        # solo necesario si tu columna no se llama 'xg'
+            )
+            if fig_sunburst is not None:
+                st.plotly_chart(fig_sunburst, use_container_width=True)
+            else:
+                st.warning(f"No hay datos de {label.lower()} para {team_name}.")
+
 
     # Gráficos de acciones en dos columnas
     col_actions1, col_actions2 = st.columns(2)

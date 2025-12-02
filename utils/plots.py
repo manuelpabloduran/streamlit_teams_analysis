@@ -370,22 +370,54 @@ def plot_player_xg_xgot(df, team_name, filter_col='TeamName'):
 
     return fig
 
-def plot_goals_sunburst(df, team_name="Racing de Santander", filter_col='TeamName'):
-    """
-    Sunburst de goles por tipo de jugada, ubicación y parte del cuerpo (en español),
-    mostrando nº de goles y % sobre el total.
-    """
-    df_goles = df[
-        (df[filter_col] == team_name) &
-        (df['NaEventType'] == 'Goal') &
-        (df['own_goal'] != -1)
-    ].copy()
+import plotly.express as px
+import streamlit as st
 
-    if df_goles.empty:
-        st.warning(f"⚠️ No hay goles para {team_name}.")
+def plot_goals_sunburst(
+    df,
+    team_name="Racing de Santander",
+    filter_col='TeamName',
+    metric='goals',  # 'goals', 'shots' o 'xg_sum'
+    shot_events=None,
+    xg_col='xg'
+):
+    """
+    Sunburst por tipo de jugada, ubicación y parte del cuerpo (en español),
+    con opción de:
+      - goals  -> nº de goles
+      - shots  -> nº de tiros totales (Attempt Saved, Miss, Post, Goal)
+      - xg_sum -> suma de xG
+
+    Devuelve: fig, df_filtrado
+    """
+    # --- Valores por defecto ---
+    if shot_events is None:
+        shot_events = ['Attempt Saved', 'Miss', 'Post', 'Goal']
+
+    # --- Filtro base por equipo y que no sea gol en propia puerta ---
+    base_mask = (df[filter_col] == team_name) & (df['own_goal'] != -1)
+
+    if metric == 'goals':
+        df_sub = df[base_mask & (df['NaEventType'] == 'Goal')].copy()
+        valor_label = "Goles"
+        titulo_metric = "Goles"
+    elif metric == 'shots':
+        df_sub = df[base_mask & (df['NaEventType'].isin(shot_events))].copy()
+        valor_label = "Tiros"
+        titulo_metric = "Tiros totales"
+    elif metric == 'xg_sum':
+        df_sub = df[base_mask & (df['NaEventType'].isin(shot_events))].copy()
+        valor_label = "xG"
+        titulo_metric = "xG acumulado"
+    else:
+        st.error("❌ 'metric' debe ser 'goals', 'shots' o 'xg_sum'.")
         return None
 
-    # --- Diccionarios de mapeo a español (puedes ir ampliándolos) ---
+    if df_sub.empty:
+        st.warning(f"⚠️ No hay eventos para {team_name} con el filtro seleccionado ({titulo_metric}).")
+        return None
+
+    # --- Diccionarios de mapeo a español ---
     play_type_map = {
         "Regular_play": "Jugada Regular",
         "Set_piece": "Balón parado",
@@ -410,8 +442,12 @@ def plot_goals_sunburst(df, team_name="Racing de Santander", filter_col='TeamNam
     }
 
     required_cols = ['play_type', 'shot_location', 'shot_part']
-    if not all(col in df_goles.columns for col in required_cols):
+    if not all(col in df_sub.columns for col in required_cols):
         st.error(f"El dataframe no contiene las columnas necesarias: {required_cols}")
+        return None
+
+    if metric == 'xg_sum' and xg_col not in df_sub.columns:
+        st.error(f"El dataframe no contiene la columna de xG especificada: '{xg_col}'")
         return None
 
     # --- Crear columnas "lindas" en español ---
@@ -419,10 +455,10 @@ def plot_goals_sunburst(df, team_name="Racing de Santander", filter_col='TeamNam
         # 1) aplicar diccionario
         # 2) si no existe en dict, reemplazar "_" por espacio y capitalizar
         return (
-            df_goles[col]
+            df_sub[col]
             .map(mapping)
             .fillna(
-                df_goles[col]
+                df_sub[col]
                 .fillna("Otro")  # por si viniera NaN
                 .str.replace("_", " ")
                 .str.strip()
@@ -430,49 +466,55 @@ def plot_goals_sunburst(df, team_name="Racing de Santander", filter_col='TeamNam
             )
         )
 
-    df_goles['play_type_es'] = _nice('play_type', play_type_map)
-    df_goles['shot_location_es'] = _nice('shot_location', shot_location_map)
-    df_goles['shot_part_es'] = _nice('shot_part', shot_part_map)
+    df_sub['play_type_es'] = _nice('play_type', play_type_map)
+    df_sub['shot_location_es'] = _nice('shot_location', shot_location_map)
+    df_sub['shot_part_es'] = _nice('shot_part', shot_part_map)
 
-    # --- Agrupar para tener nº de goles por combinación ---
-    grouped = (
-        df_goles
-        .groupby(['play_type_es', 'shot_location_es', 'shot_part_es'], as_index=False)
-        .size()
-        .rename(columns={'size': 'n_goles'})
-    )
-
-    total_goles = grouped['n_goles'].sum()
+    # --- Agrupar según la métrica seleccionada ---
+    if metric in ['goals', 'shots']:
+        grouped = (
+            df_sub
+            .groupby(['play_type_es', 'shot_location_es', 'shot_part_es'], as_index=False)
+            .size()
+            .rename(columns={'size': 'valor_metric'})
+        )
+    else:  # xg_sum
+        grouped = (
+            df_sub
+            .groupby(['play_type_es', 'shot_location_es', 'shot_part_es'], as_index=False)
+            [xg_col].sum()
+            .rename(columns={xg_col: 'valor_metric'})
+        )
 
     # --- Sunburst ---
     fig = px.sunburst(
         grouped,
         path=['play_type_es', 'shot_location_es', 'shot_part_es'],
-        values='n_goles',
+        values='valor_metric',
         color='play_type_es',
         color_discrete_sequence=px.colors.qualitative.Safe
     )
 
-    # Texto dentro de cada sector: etiqueta + nº de goles + %
+    # Texto dentro de cada sector: etiqueta + valor + %
     fig.update_traces(
         insidetextorientation='radial',
         texttemplate='%{label}<br>%{percentRoot:.1%}',
         hovertemplate=(
             '<b>%{label}</b><br>' +
-            'Goles: %{value}<br>' +
+            f'{valor_label}: %{value:.2f}<br>' +
             'Porcentaje: %{percentRoot:.1%}<extra></extra>'
         )
     )
 
     fig.update_layout(
-        title=f'{team_name} – Goles por tipo de jugada, ubicación y parte del cuerpo',
+        title=f'{team_name} – {titulo_metric} por tipo de jugada, ubicación y parte del cuerpo',
         margin=dict(t=60, l=0, r=0, b=0),
         paper_bgcolor='#101820',
         plot_bgcolor='#101820',
         font_color='white'
     )
 
-    return fig, df_goles
+    return fig, df_sub
 
 
 def plot_offensive_dashboard(df, team_name, filter_col='TeamName'):
