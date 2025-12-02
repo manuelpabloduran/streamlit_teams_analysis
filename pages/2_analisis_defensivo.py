@@ -190,13 +190,27 @@ st.header("Análisis de Amenazas Recibidas")
 if team_name:
     st.write(f"Mostrando análisis defensivo para **{team_name}** (acciones de sus rivales)")
 
-    # Sunburst en una fila propia
-    st.subheader("Goles Recibidos por Tipo de Jugada")
-    fig_sunburst, _ = plot_goals_sunburst(df_page_filtered, team_name, filter_col='RivalName')
-    if fig_sunburst:
-        st.plotly_chart(fig_sunburst, use_container_width=True)
-    else:
-        st.warning(f"No hay datos de goles recibidos para {team_name}.")
+    # --- SUNBURSTS EN UNA FILA (GOLES / TIROS / xG) ---
+    col1, col2, col3 = st.columns(3)
+
+    configs = [
+        ('goals',   'Goles'),
+        ('shots',   'Tiros'),
+        ('xg_sum',  'xG acumulado'),
+    ]
+
+    for col, (metric, label) in zip((col1, col2, col3), configs):
+        with col:
+            fig_sunburst, df_sub = plot_goals_sunburst(
+                df_page_filtered,
+                team_name=team_name,
+                metric=metric,
+                filter_col='RivalName'
+            )
+            if fig_sunburst is not None:
+                st.plotly_chart(fig_sunburst, use_container_width=True)
+            else:
+                st.warning(f"No hay datos de {label.lower()} para {team_name}.")
 
     # Gráficos de acciones en dos columnas
     col_actions1, col_actions2 = st.columns(2)
