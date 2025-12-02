@@ -369,8 +369,7 @@ if team_name:
             fig_sunburst, df_sub = plot_goals_sunburst(
                 df_page_filtered,
                 team_name=team_name,
-                metric=metric,        # <-- cambia la métrica
-                # xg_col='xg'        # solo necesario si tu columna no se llama 'xg'
+                metric=metric
             )
             if fig_sunburst is not None:
                 st.plotly_chart(fig_sunburst, use_container_width=True)
