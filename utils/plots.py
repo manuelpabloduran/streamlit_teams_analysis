@@ -441,6 +441,16 @@ def plot_goals_sunburst(
         "Other Body Part": "Otro",
     }
 
+    # 🎨 Colores FIJOS por tipo de jugada (en español)
+    play_type_colors = {
+        "Jugada Regular":   "#00A651",  # verde Racing
+        "Balón parado":     "#F5C242",  # dorado/amarillo
+        "Penalti":          "#E53935",  # rojo
+        "Transición rápida":"#1E88E5",  # azul
+        "Corner":           "#8E24AA",  # violeta
+        "Saque de banda":   "#757575",  # gris
+    }
+
     required_cols = ['play_type', 'shot_location', 'shot_part']
     if not all(col in df_sub.columns for col in required_cols):
         st.error(f"El dataframe no contiene las columnas necesarias: {required_cols}")
@@ -492,7 +502,7 @@ def plot_goals_sunburst(
         path=['play_type_es', 'shot_location_es', 'shot_part_es'],
         values='valor_metric',
         color='play_type_es',
-        color_discrete_sequence=px.colors.qualitative.Safe
+        color_discrete_map=play_type_colors
     )
 
     if metric in ['goals', 'shots']:
