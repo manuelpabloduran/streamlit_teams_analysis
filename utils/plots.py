@@ -451,7 +451,7 @@ def plot_goals_sunburst(
         "Saque de banda":   "#757575",  # gris
     }
 
-    required_cols = ['play_type', 'shot_location', 'shot_part']
+    required_cols = ['play_type', 'possession_type', 'shot_location']
     if not all(col in df_sub.columns for col in required_cols):
         st.error(f"El dataframe no contiene las columnas necesarias: {required_cols}")
         return None
@@ -477,21 +477,22 @@ def plot_goals_sunburst(
         )
 
     df_sub['play_type_es'] = _nice('play_type', play_type_map)
+    df_sub['possession_type_es'] = df_sub['possession_type'].fillna("Otro")  # por si viniera NaN
     df_sub['shot_location_es'] = _nice('shot_location', shot_location_map)
-    df_sub['shot_part_es'] = _nice('shot_part', shot_part_map)
+
 
     # --- Agrupar según la métrica seleccionada ---
     if metric in ['goals', 'shots']:
         grouped = (
             df_sub
-            .groupby(['play_type_es', 'shot_location_es', 'shot_part_es'], as_index=False)
+            .groupby(['play_type_es', 'possession_type_es', 'shot_location_es'], as_index=False)
             .size()
             .rename(columns={'size': 'valor_metric'})
         )
     else:  # xg_sum
         grouped = (
             df_sub
-            .groupby(['play_type_es', 'shot_location_es', 'shot_part_es'], as_index=False)
+            .groupby(['play_type_es', 'possession_type_es', 'shot_location_es'], as_index=False)
             [xg_col].sum()
             .rename(columns={xg_col: 'valor_metric'})
         )
@@ -499,7 +500,7 @@ def plot_goals_sunburst(
     # --- Sunburst ---
     fig = px.sunburst(
         grouped,
-        path=['play_type_es', 'shot_location_es', 'shot_part_es'],
+        path=['play_type_es', 'possession_type_es', 'shot_location_es'],
         values='valor_metric',
         color='play_type_es',
         color_discrete_map=play_type_colors
