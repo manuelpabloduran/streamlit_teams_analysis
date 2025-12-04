@@ -67,7 +67,7 @@ def refine_set_pieces(df):
 
     # Mapeamos los nuevos tipos a la columna 'possession_type'
     # Usamos el 'possession_type' existente si no está en el mapa de nuevos tipos
-    df['possession_type'] = df['Posesion'].map(new_types_map).fillna(df['possession_type'])
+    df['possession_type'] = df['Posesion'].map(new_types_map) #.fillna(df['possession_type'])
     
     return df
 
