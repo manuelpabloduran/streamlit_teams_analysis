@@ -9,7 +9,6 @@ st.set_page_config(layout="wide")
 
 st.title('Análisis Ofensivo - Progresiones con Finalización')
 
-
 # --- Carga y Preparación de Datos ---
 @st.cache_data
 def load_and_preprocess_data():
