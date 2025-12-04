@@ -162,7 +162,7 @@ def preprocess_data(df):
     df_final = pd.merge(df, possession_metrics[['Posesion', 'possession_type']], on='Posesion', how='left')
 
     # 6. Refinar las categorías para jugadas a balón parado
-    #df_final = refine_set_pieces(df_final)
+    df_final = refine_set_pieces(df_final)
 
     # Rellenar cualquier valor restante con 'Otro'
     df_final['possession_type'] = df_final['possession_type'].fillna('Otro')
