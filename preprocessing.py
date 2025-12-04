@@ -168,3 +168,6 @@ def preprocess_data(df):
     df_final['possession_type'] = df_final['possession_type'].fillna('Otro')
 
     return df_final
+
+
+
