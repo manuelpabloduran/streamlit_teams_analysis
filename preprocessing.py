@@ -13,14 +13,14 @@ def refine_set_pieces(df):
     new_types_map = {}
 
     # Agrupamos el dataframe original por 'Posesion' una sola vez para eficiencia
-    grouped_df = df.groupby('Posesion')
+    grouped_df = df.sort_values(by=['Posesion', 'time_seconds', 'IdFrame']).groupby('Posesion')
 
     for poss_id in uncategorized_possessions:
         possession_group = grouped_df.get_group(poss_id)
         play_type = possession_group['play_type'].iloc[0]
         
         # Valor por defecto es el play_type original
-        new_type = play_type
+        new_type = "play_type"
 
         # Lógica para Córners
         if play_type in ['Corner', 'From_corner']:
