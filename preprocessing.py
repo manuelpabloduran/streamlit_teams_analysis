@@ -20,7 +20,7 @@ def refine_set_pieces(df):
         play_type = possession_group['play_type'].iloc[0]
         
         # Valor por defecto es el play_type original
-        new_type = "play_type"
+        new_type = play_type
 
         # Lógica para Córners
         if play_type in ['Corner', 'From_corner']:
