@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from utils.plots import plot_team_progression_with_hist, plot_offensive_sequences, plot_player_xg_xgot, plot_goals_sunburst, plot_offensive_dashboard, plot_goal_actions_bar, plot_xg_actions_bar, plot_pass_matrix, plot_pass_xg_matrix, plot_area_entries_team, plot_rival_half_entries_team, plot_area_entry_passes, plot_area_entry_by_corridor, plot_distribution_comparison, plot_area_entry_drives, plot_area_entry_drives_by_corridor
 from streamlit_plotly_events import plotly_events
+from preprocessing import preprocess_data
 
 st.set_page_config(layout="wide")
 
@@ -10,6 +11,12 @@ st.title('Análisis Ofensivo - Progresiones con Finalización')
 
 # --- Carga y Preparación de Datos ---
 @st.cache_data
+def load_and_preprocess_data():
+    df = pd.read_csv('possessions_with_shots.csv')
+    df = preprocess_data(df)
+    return df
+
+df = load_and_preprocess_data()
 
 # Definir la función para asignar pasillos
 def asignar_pasillo(y):
@@ -23,24 +30,6 @@ def asignar_pasillo(y):
         return 'Pasillo Interior Izquierdo'
     else: # y > 79
         return 'Pasillo Exterior Izquierdo'
-
-df = pd.read_csv('possessions_with_shots.csv')
-
-# Filtro inicial para eventos con finalización
-#df = df[df['possession_with_shot']]
-
-# Corrección de goles en propia puerta
-own_goal_condition = (df['NaEventType'] == 'Goal') & (df['own_goal'].notna())
-df['TeamName'] = np.where(
-    own_goal_condition,
-    np.where(df['TeamName'] == df['NaHomeTeam'], df['NaAwayTeam'], df['NaHomeTeam']),
-    df['TeamName']
-)
-df['IdTeam'] = np.where(
-    own_goal_condition,
-    np.where(df['IdTeam'] == df['IdHomeTeam'], df['IdAwayTeam'], df['IdHomeTeam']),
-    df['IdTeam']
-)
 
 # --- Ordenar eventos cronológicamente dentro de cada posesión ---
 df = df.sort_values(by=['Posesion', 'time_seconds', 'IdFrame'])
@@ -59,68 +48,6 @@ df['acciones_previas'] = group_size - 1 - event_number
 last_time_in_possession = df.groupby('Posesion')['time_seconds'].transform('max')
 # Se calcula la diferencia
 df['segundos_previos'] = last_time_in_possession - df['time_seconds']
-
-
-# --- Cálculo de variables adicionales (a nivel de evento) ---
-df['dx'] = df['end_x'] - df['x']
-df['dy'] = df['end_y'] - df['y']
-df['Angle'] = np.arctan2(df['dy'], df['dx']).mod(2 * np.pi)
-
-# --- Cálculo de variables adicionales (a nivel de posesión) ---
-# Duración de la posesión
-possession_duration = df.groupby('Posesion')['time_seconds'].transform(lambda x: x.max() - x.min())
-possession_counts = df.groupby('Posesion')['time_seconds'].transform('count')
-df['possession_duration'] = possession_duration.where(possession_counts > 1, np.nan)
-df['possession_duration'] = df['possession_duration'].clip(upper=100)
-
-# xG de la posesión
-df['possession_xg'] = df.groupby('Posesion')['xg'].transform('sum')
-df['possession_xg'] = df['possession_xg'].clip(upper=1)
-
-
-df['iniciacion_area'] = np.where(((df["x"] >= 84) &
-                                                 (df["y"] <= 81) &
-                                                 (df["y"] >= 19)), 1, 0)
-
-df['finalizacion_area'] = np.where(((df["end_x"] >= 84) &
-                                                 (df["end_y"] <= 81) &
-                                                 (df["end_y"] >= 19)), 1, 0)
-
-df['pase_peligroso_al_area'] = np.where(((df["iniciacion_area"] == 0) &
-                                                       (df["end_x"] >= 84) &
-                                                       (df["end_y"] <= 81) &
-                                                       (df["end_y"] >= 19)), 1, 0)
-
-# AGREGAMOS CUTBACKS AL ANÁLISIS
-df['cutback'] = np.where(((df["NaEventType"]=="Pass") &
-                            (df["finalizacion_area"]==1) &
-                            (df["x"]>80) &
-                            (df["y"]<=37) &
-                            (df["Angle"]>1.57) &
-                            (df["Angle"]<3.14)) |
-                            ((df["NaEventType"]=="Pass") &
-                             (df["finalizacion_area"]==1) &
-                             (df["chipped"].isna()) &
-                             (df["Outcome"]==1) &
-                             (df["x"]>80) &
-                             (df["y"]>=63) &
-                             (df["Angle"]>3.14) &
-                             (df["Angle"]<4.71)), 1, 0)
-
-df['dividido'] = np.where(((df["NaEventType"]=="Pass") &
-                                         (df["finalizacion_area"]==1) &
-                                         (df["x"]>80) &
-                                         (df["y"]<=37) &
-                                         (df["Angle"]>0) &
-                                         (df["Angle"]<1.57)) |
-                            ((df["NaEventType"]=="Pass") &
-                             (df["finalizacion_area"]==1) &
-                             (df["chipped"].isna()) &
-                             (df["Outcome"]==1) &
-                             (df["x"]>80) &
-                             (df["y"]>=63) &
-                             (df["Angle"]>4.71) &
-                             (df["Angle"]<6.28)), 1, 0)
 
 
 # --- Conversión y filtro de fecha ---
