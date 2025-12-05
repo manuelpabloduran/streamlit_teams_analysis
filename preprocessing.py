@@ -6,8 +6,10 @@ def refine_set_pieces(df):
     Refina el 'possession_type' para jugadas a balón parado basándose en reglas específicas.
     """
     # Obtener las posesiones que no fueron categorizadas por la lógica de juego regular.
+    df = df.copy()
     uncategorized_mask = df['possession_type'].isna()
     uncategorized_possessions = df[uncategorized_mask]['Posesion'].unique()
+    print(len(uncategorized_possessions))
 
     # Creamos un diccionario para mapear Posesion -> nuevo_tipo
     new_types_map = {}
@@ -17,7 +19,15 @@ def refine_set_pieces(df):
 
     for poss_id in uncategorized_possessions:
         possession_group = grouped_df.get_group(poss_id)
-        play_type = possession_group['play_type'].iloc[0]
+        play_type_series = possession_group.loc[
+            possession_group['play_type'].notna(), 'play_type'
+        ]
+        if play_type_series.empty:
+            # Si no hay ningún play_type definido, saltamos esta posesión
+            # (o podrías poner new_type = "Otro" si prefieres algo por defecto)
+            continue
+        
+        play_type = play_type_series.iloc[0]
         
         # Valor por defecto es el play_type original
         new_type = play_type
@@ -65,9 +75,10 @@ def refine_set_pieces(df):
         
         new_types_map[poss_id] = new_type
 
-    # Mapeamos los nuevos tipos a la columna 'possession_type'
-    # Usamos el 'possession_type' existente si no está en el mapa de nuevos tipos
-    df['possession_type'] = df['Posesion'].map(new_types_map) #.fillna(df['possession_type'])
+    # Solo sobrescribimos donde antes estaba NaN
+    df.loc[uncategorized_mask, 'possession_type'] = (
+        df.loc[uncategorized_mask, 'Posesion'].map(new_types_map)
+    )
     
     return df
 
@@ -165,9 +176,6 @@ def preprocess_data(df):
     df_final = refine_set_pieces(df_final)
 
     # Rellenar cualquier valor restante con 'Otro'
-    df_final['possession_type'] = df_final['possession_type'].fillna('Otro')
+    df_final['possession_type'] = df_final['possession_type']
 
     return df_final
-
-
-
