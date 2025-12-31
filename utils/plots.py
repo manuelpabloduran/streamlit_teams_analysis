@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from mplsoccer import Pitch
+from mplsoccer import Pitch, VerticalPitch
 import streamlit as st
 from scipy.interpolate import make_interp_spline
 from collections import defaultdict
@@ -2103,3 +2103,353 @@ def plot_area_entry_drives_by_corridor(
     ax.set_title(f"{title_prefix} — {team_name}\nTotal: N={total_entries}", fontsize=14)
     plt.tight_layout()
     return fig, dfp
+
+# Definición de zonas de disparo basadas en las líneas del código original
+zone_areas = {
+    'Zona 1': {'x_lower_bound': 0, 'x_upper_bound': 21.1, 'y_lower_bound': 66.6, 'y_upper_bound': 83},
+    'Zona 2': {'x_lower_bound': 21.1, 'x_upper_bound': 36.8, 'y_lower_bound': 66.6, 'y_upper_bound': 83},
+    'Zona 3': {'x_lower_bound': 36.8, 'x_upper_bound': 63.2, 'y_lower_bound': 66.6, 'y_upper_bound': 83},
+    'Zona 4': {'x_lower_bound': 63.2, 'x_upper_bound': 78.9, 'y_lower_bound': 66.6, 'y_upper_bound': 83},
+    'Zona 5': {'x_lower_bound': 78.9, 'x_upper_bound': 100, 'y_lower_bound': 66.6, 'y_upper_bound': 83},
+    'Zona 6': {'x_lower_bound': 0, 'x_upper_bound': 21.1, 'y_lower_bound': 83, 'y_upper_bound': 94.2},
+    'Zona 7': {'x_lower_bound': 21.1, 'x_upper_bound': 36.8, 'y_lower_bound': 83, 'y_upper_bound': 94.2},
+    'Zona 8': {'x_lower_bound': 36.8, 'x_upper_bound': 63.2, 'y_lower_bound': 83, 'y_upper_bound': 94.2},
+    'Zona 9': {'x_lower_bound': 63.2, 'x_upper_bound': 78.9, 'y_lower_bound': 83, 'y_upper_bound': 94.2},
+    'Zona 10': {'x_lower_bound': 78.9, 'x_upper_bound': 100, 'y_lower_bound': 83, 'y_upper_bound': 94.2},
+    'Zona 11': {'x_lower_bound': 0, 'x_upper_bound': 21.1, 'y_lower_bound': 94.2, 'y_upper_bound': 100},
+    'Zona 12': {'x_lower_bound': 21.1, 'x_upper_bound': 36.8, 'y_lower_bound': 94.2, 'y_upper_bound': 100},
+    'Zona 13': {'x_lower_bound': 36.8, 'x_upper_bound': 63.2, 'y_lower_bound': 94.2, 'y_upper_bound': 100},
+    'Zona 14': {'x_lower_bound': 63.2, 'x_upper_bound': 78.9, 'y_lower_bound': 94.2, 'y_upper_bound': 100},
+    'Zona 15': {'x_lower_bound': 78.9, 'x_upper_bound': 100, 'y_lower_bound': 94.2, 'y_upper_bound': 100},
+}
+
+# Constantes para los gráficos de disparos
+SHOT_EVENTS = ['Goal', 'Attempt Saved', 'Miss', 'Post']
+DEFAULT_XG = 0.1
+MIN_PCT_THRESHOLD = 0.001
+HIGH_PCT_THRESHOLD = 0.075
+XG_SIZE_MULTIPLIER = 750
+ZONE_LINE_WIDTH = 1.5
+
+def assign_shot_zone(y, x):
+    """
+    Asigna una zona de disparo basada en las coordenadas y (ancho) y x (profundidad).
+    Nota: En VerticalPitch, y es el ancho y x es la profundidad.
+    """
+    for zone_name, bounds in zone_areas.items():
+        if (bounds['x_lower_bound'] <= y < bounds['x_upper_bound'] and
+            bounds['y_lower_bound'] <= x < bounds['y_upper_bound']):
+            return zone_name
+    return 'Zona Desconocida'
+
+def _filter_and_prepare_shots_data(df, team_name=None, player_name=None, filter_col='TeamName'):
+    """
+    Filtra y prepara los datos de disparos.
+    
+    Returns:
+    --------
+    tuple: (df_filtered, team_name) donde df_filtered es el dataframe preparado
+    """
+    # Detectar equipo si no se proporciona
+    if team_name is None:
+        unique_teams = df[filter_col].dropna().unique()
+        if len(unique_teams) == 1:
+            team_name = unique_teams[0]
+            df_filtered = df.copy()
+        else:
+            df_filtered = df.copy()
+    else:
+        df_filtered = df[df[filter_col] == team_name].copy()
+    
+    # Filtrar por jugador
+    if player_name and player_name != "Todos":
+        df_filtered = df_filtered[df_filtered['NaPlayer'] == player_name].copy()
+    
+    # Filtrar eventos de tiro
+    df_filtered = df_filtered[df_filtered['NaEventType'].isin(SHOT_EVENTS)].copy()
+    
+    if df_filtered.empty:
+        return None, team_name
+    
+    # Preparar columnas necesarias
+    df_filtered = df_filtered.copy()
+    df_filtered['outcome'] = (df_filtered['NaEventType'] == 'Goal').astype(int)
+    
+    # Normalizar xg
+    if 'xg' not in df_filtered.columns:
+        df_filtered['xg'] = DEFAULT_XG
+    df_filtered['xg'] = pd.to_numeric(df_filtered['xg'], errors='coerce').fillna(DEFAULT_XG)
+    
+    # Asignar zonas de forma más eficiente
+    df_filtered['zone_area'] = df_filtered.apply(
+        lambda row: assign_shot_zone(row['y'], row['x']), axis=1
+    )
+    
+    return df_filtered, team_name
+
+def _draw_zone_delimiter_lines(ax):
+    """Dibuja las líneas delimitadoras de zonas."""
+    ax.plot([21.1, 21.1], [66.6, 100], ls=':', color='black', linewidth=ZONE_LINE_WIDTH)
+    ax.plot([78.9, 78.9], [66.6, 100], ls=':', color='black', linewidth=ZONE_LINE_WIDTH)
+    ax.plot([36.8, 36.8], [66.6, 100], ls=':', color='black', linewidth=ZONE_LINE_WIDTH)
+    ax.plot([63.2, 63.2], [66.6, 100], ls=':', color='black', linewidth=ZONE_LINE_WIDTH)
+    ax.plot([0, 100], [83, 83], ls=':', color='black', linewidth=ZONE_LINE_WIDTH)
+    ax.plot([36.8, 63.2], [94.2, 94.2], ls=':', color='black', linewidth=ZONE_LINE_WIDTH)
+    ax.plot([0, 100], [66.6, 66.6], ls=':', color='black', linewidth=ZONE_LINE_WIDTH)
+
+def _draw_zones_heatmap(ax, df, use_adaptive_text_color=True):
+    """
+    Dibuja el mapa de zonas coloreado según porcentaje de disparos.
+    
+    Parameters:
+    -----------
+    ax : matplotlib.axes.Axes
+        Eje donde dibujar
+    df : DataFrame
+        DataFrame con columnas 'zone_area', 'y', 'x'
+    use_adaptive_text_color : bool
+        Si True, adapta el color del texto según el porcentaje
+    """
+    # Calcular estadísticas por zona
+    zone_stats = df.groupby('zone_area').size().reset_index(name='count')
+    zone_stats['pct'] = zone_stats['count'] / len(df)
+    
+    if zone_stats.empty:
+        return
+    
+    max_pct = zone_stats['pct'].max() if zone_stats['pct'].max() > 0 else 1.0
+    
+    # Dibujar cancha
+    pitch = VerticalPitch(pitch_type='opta', half=True, pitch_color='#22312b', line_color='white')
+    pitch.draw(ax=ax)
+    ax.set_facecolor('#22312b')
+    
+    # Colorear zonas
+    for _, row in zone_stats.iterrows():
+        zone = row['zone_area']
+        shot_pct = row['pct']
+        
+        if zone not in zone_areas:
+            continue
+        
+        bounds = zone_areas[zone]
+        x_lim = [bounds['x_lower_bound'], bounds['x_upper_bound']]
+        y1, y2 = bounds['y_lower_bound'], bounds['y_upper_bound']
+        
+        # Rellenar zona
+        ax.fill_between(
+            x=x_lim, y1=y1, y2=y2,
+            color='green',
+            alpha=(shot_pct / max_pct) if max_pct > 0 else 0.1,
+            zorder=0, ec='None'
+        )
+        
+        # Texto con porcentaje
+        if shot_pct >= MIN_PCT_THRESHOLD:
+            if use_adaptive_text_color:
+                color_text = 'white' if shot_pct > HIGH_PCT_THRESHOLD else 'black'
+                fore_color = 'black' if shot_pct > HIGH_PCT_THRESHOLD else 'white'
+            else:
+                color_text = 'white'
+                fore_color = 'black'
+            
+            x_pos = x_lim[0] + (x_lim[1] - x_lim[0]) / 2
+            y_pos = y1 + (y2 - y1) / 2
+            
+            txt = ax.annotate(
+                xy=(x_pos, y_pos),
+                text=f'{shot_pct:.0%}',
+                ha='center', va='center',
+                color=color_text, weight='bold', size=12
+            )
+            txt.set_path_effects([
+                pe.Stroke(linewidth=1.5, foreground=fore_color),
+                pe.Normal()
+            ])
+    
+    # Líneas delimitadoras
+    _draw_zone_delimiter_lines(ax)
+
+def _draw_shots_scatter(ax, df):
+    """Dibuja los disparos (gol / no gol) sobre la mitad de la cancha."""
+    pitch = VerticalPitch(pitch_type='opta', half=True, pitch_color='#22312b', line_color='white')
+    pitch.draw(ax=ax)
+    ax.set_facecolor('#22312b')
+    
+    # Separar goles y no goles
+    no_gol = df[df['outcome'] == 0]
+    gol = df[df['outcome'] == 1]
+    
+    # Dibujar no goles
+    if not no_gol.empty:
+        ax.scatter(
+            no_gol['y'], no_gol['x'],
+            color='red',
+            s=no_gol['xg'] * XG_SIZE_MULTIPLIER,
+            edgecolors='black', alpha=0.4, label='No gol',
+            zorder=3
+        )
+    
+    # Dibujar goles
+    if not gol.empty:
+        ax.scatter(
+            gol['y'], gol['x'],
+            color='green',
+            s=gol['xg'] * XG_SIZE_MULTIPLIER,
+            edgecolors='black', alpha=1, label='Gol',
+            zorder=3
+        )
+    
+    ax.legend(loc='lower center', ncols=2, fontsize=15, facecolor='white', edgecolor='none')
+
+def _draw_empty_pitch(ax, title_text):
+    """Dibuja una cancha vacía con un título."""
+    pitch = VerticalPitch(pitch_type='opta', half=True, pitch_color='#22312b', line_color='white')
+    pitch.draw(ax=ax)
+    ax.set_facecolor('#22312b')
+    ax.set_title(title_text, fontsize=16, color='white', fontweight='bold')
+
+def plot_team_shots(df, team_name=None, player_name=None, filter_col='TeamName'):
+    """
+    Crea un gráfico de dos paneles mostrando:
+    1. Zonas de disparo con porcentajes
+    2. Scatter plot de tiros (goles vs no goles)
+    
+    Parameters:
+    -----------
+    df : DataFrame
+        DataFrame con los eventos (puede estar ya filtrado por otros criterios)
+    team_name : str, optional
+        Nombre del equipo. Si es None, verifica si el df ya tiene un solo equipo o usa todo el dataset
+    player_name : str, optional
+        Nombre del jugador. Si es None, muestra todos los jugadores
+    filter_col : str
+        Columna para filtrar por equipo (default: 'TeamName')
+    
+    Returns:
+    --------
+    fig : matplotlib.figure.Figure
+        Figura con los dos gráficos
+    """
+    # Filtrar y preparar datos
+    tiros_df, team_name = _filter_and_prepare_shots_data(df, team_name, player_name, filter_col)
+    
+    if tiros_df is None or tiros_df.empty:
+        return None
+    
+    # Crear figura
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 9))
+    fig.set_facecolor('#101820')
+    
+    # Panel 1: Zonas de disparo
+    _draw_zones_heatmap(ax1, tiros_df, use_adaptive_text_color=False)
+    ax1.set_title(
+        f"Ubicaciones en zonas de los tiros. Cantidad: {len(tiros_df)}",
+        fontsize=22, fontweight='bold', color='white'
+    )
+    
+    # Panel 2: Scatter plot
+    _draw_shots_scatter(ax2, tiros_df)
+    ax2.set_title(
+        "Distribución de tiros por resultado",
+        fontsize=22, fontweight='bold', color='white'
+    )
+    
+    plt.tight_layout()
+    return fig
+
+# Funciones auxiliares para set_piece (usando las funciones unificadas)
+def _draw_zones_set_piece(ax, df):
+    """Dibuja el mapa de zonas coloreado según porcentaje de disparos."""
+    _draw_zones_heatmap(ax, df, use_adaptive_text_color=True)
+
+def _draw_scatter_set_piece(ax, df):
+    """Dibuja los disparos (gol / no gol) sobre la mitad de la cancha."""
+    _draw_shots_scatter(ax, df)
+
+def plot_set_piece_shots(df, team_name=None, player_name=None, filter_col='TeamName'):
+    """
+    Crea un gráfico 2x2 mostrando disparos en pelota parada:
+    - Fila 1: Córners (zonas y scatter)
+    - Fila 2: Resto de jugadas de pelota parada (zonas y scatter)
+    
+    Parameters:
+    -----------
+    df : DataFrame
+        DataFrame con los eventos (puede estar ya filtrado por otros criterios)
+    team_name : str, optional
+        Nombre del equipo. Si es None, verifica si el df ya tiene un solo equipo o usa todo el dataset
+    player_name : str, optional
+        Nombre del jugador. Si es None, muestra todos los jugadores
+    filter_col : str
+        Columna para filtrar por equipo (default: 'TeamName')
+    
+    Returns:
+    --------
+    fig : matplotlib.figure.Figure
+        Figura con los cuatro gráficos
+    """
+    # Filtrar y preparar datos
+    tiros_df, team_name = _filter_and_prepare_shots_data(df, team_name, player_name, filter_col)
+    
+    if tiros_df is None or tiros_df.empty:
+        return None
+    
+    # Separar por tipo de jugada
+    corner_df = tiros_df[tiros_df['play_type'] == 'From_corner'].copy()
+    rest_df = tiros_df[tiros_df['play_type'].isin(['Free_kick', 'Set_piece', 'Throw-in_set_piece'])].copy()
+    
+    # Calcular estadísticas de forma más eficiente
+    def _calc_stats(df_subset):
+        if df_subset.empty:
+            return {'xg': 0.0, 'shots': 0, 'goals': 0}
+        return {
+            'xg': round(df_subset['xg'].sum(), 2),
+            'shots': len(df_subset),
+            'goals': int(df_subset['outcome'].sum())
+        }
+    
+    corner_stats = _calc_stats(corner_df)
+    rest_stats = _calc_stats(rest_df)
+    
+    # Crear figura 2x2
+    fig, axes = plt.subplots(2, 2, figsize=(20, 18))
+    fig.set_facecolor('#101820')
+    (ax1, ax2), (ax3, ax4) = axes
+    
+    # Título general
+    title_parts = [f"Disparos de {team_name if team_name else 'Todos los equipos'}"]
+    if player_name and player_name != "Todos":
+        title_parts.append(f" - {player_name}")
+    title_parts.append(" en pelota parada\n")
+    title_parts.append(
+        f"Córners – xG: {corner_stats['xg']} | Tiros: {corner_stats['shots']} | Goles: {corner_stats['goals']}\n"
+    )
+    title_parts.append(
+        f"Resto – xG: {rest_stats['xg']} | Tiros: {rest_stats['shots']} | Goles: {rest_stats['goals']}"
+    )
+    
+    fig.suptitle(''.join(title_parts), fontsize=24, fontweight="bold", color='white')
+    
+    # Primera fila: córners
+    if not corner_df.empty:
+        _draw_zones_set_piece(ax1, corner_df)
+        ax1.set_title("Córners – Zonas", fontsize=16, color='white', fontweight='bold')
+        _draw_scatter_set_piece(ax2, corner_df)
+        ax2.set_title("Disparos (córners)", fontsize=16, color='white', fontweight='bold')
+    else:
+        _draw_empty_pitch(ax1, "Córners – Zonas (Sin datos)")
+        _draw_empty_pitch(ax2, "Disparos (córners) (Sin datos)")
+    
+    # Segunda fila: resto de jugadas
+    if not rest_df.empty:
+        _draw_zones_set_piece(ax3, rest_df)
+        ax3.set_title("Resto de jugadas – Zonas", fontsize=16, color='white', fontweight='bold')
+        _draw_scatter_set_piece(ax4, rest_df)
+        ax4.set_title("Disparos (resto)", fontsize=16, color='white', fontweight='bold')
+    else:
+        _draw_empty_pitch(ax3, "Resto de jugadas – Zonas (Sin datos)")
+        _draw_empty_pitch(ax4, "Disparos (resto) (Sin datos)")
+    
+    plt.tight_layout()
+    return fig
