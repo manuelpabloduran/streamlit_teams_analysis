@@ -16,7 +16,8 @@ from utils.plots import (
     plot_area_entry_drives, 
     plot_area_entry_drives_by_corridor,
     plot_team_shots,
-    plot_set_piece_shots
+    plot_set_piece_shots,
+    plot_crosses_analysis
 )
 from streamlit_plotly_events import plotly_events
 from preprocessing import preprocess_data
@@ -310,5 +311,13 @@ if team_name:
             st.pyplot(fig_drive_corridor, use_container_width=True)
         else:
             st.warning("No se pudo generar el gráfico de conducciones al área por pasillo del rival.")
+
+    st.markdown("---")
+    st.subheader("Análisis de Centros del Rival")
+    fig_crosses = plot_crosses_analysis(df_page_filtered, team_name, filter_col='RivalName')
+    if fig_crosses:
+        st.pyplot(fig_crosses, use_container_width=True)
+    else:
+        st.warning("No se pudo generar el gráfico de análisis de centros del rival.")
 else:
     st.info("Selecciona un equipo para comenzar el análisis defensivo.")

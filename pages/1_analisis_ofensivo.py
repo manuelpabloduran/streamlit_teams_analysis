@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from utils.plots import plot_team_progression_with_hist, plot_offensive_sequences, plot_player_xg_xgot, plot_goals_sunburst, plot_offensive_dashboard, plot_goal_actions_bar, plot_xg_actions_bar, plot_pass_matrix, plot_pass_xg_matrix, plot_area_entries_team, plot_rival_half_entries_team, plot_area_entry_passes, plot_area_entry_by_corridor, plot_distribution_comparison, plot_area_entry_drives, plot_area_entry_drives_by_corridor, plot_team_shots, plot_set_piece_shots
+from utils.plots import plot_team_progression_with_hist, plot_offensive_sequences, plot_player_xg_xgot, plot_goals_sunburst, plot_offensive_dashboard, plot_goal_actions_bar, plot_xg_actions_bar, plot_pass_matrix, plot_pass_xg_matrix, plot_area_entries_team, plot_rival_half_entries_team, plot_area_entry_passes, plot_area_entry_by_corridor, plot_distribution_comparison, plot_area_entry_drives, plot_area_entry_drives_by_corridor, plot_team_shots, plot_set_piece_shots, plot_crosses_analysis
 from streamlit_plotly_events import plotly_events
 from preprocessing import preprocess_data
 
@@ -524,6 +524,14 @@ if team_name:
             st.pyplot(fig_drive_corridor, use_container_width=True)
         else:
             st.warning("No se pudo generar el gráfico de conducciones al área por pasillo.")
+
+    st.markdown("---")
+    st.subheader("Análisis de Centros")
+    fig_crosses = plot_crosses_analysis(df_page_filtered, team_name)
+    if fig_crosses:
+        st.pyplot(fig_crosses, use_container_width=True)
+    else:
+        st.warning("No se pudo generar el gráfico de análisis de centros.")
 
     with st.expander("Análisis de progresión por pasillo en campo rival", expanded=False):
         # Para esta sección, usamos un dataframe filtrado solo por equipo, no por los otros filtros.

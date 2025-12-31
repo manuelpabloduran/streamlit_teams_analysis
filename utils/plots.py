@@ -2453,3 +2453,174 @@ def plot_set_piece_shots(df, team_name=None, player_name=None, filter_col='TeamN
     
     plt.tight_layout()
     return fig
+
+def plot_crosses_analysis(df, team_name=None, filter_col='TeamName'):
+    """
+    Crea un gráfico 2x2 mostrando análisis de centros:
+    - Fila 1: Origen y destino de centros incompletos (Outcome == 0)
+    - Fila 2: Origen y destino de centros completos (Outcome == 1)
+    
+    Parameters:
+    -----------
+    df : DataFrame
+        DataFrame con los eventos (puede estar ya filtrado por otros criterios)
+    team_name : str, optional
+        Nombre del equipo. Si es None, verifica si el df ya tiene un solo equipo
+    filter_col : str
+        Columna para filtrar por equipo (default: 'TeamName')
+    
+    Returns:
+    --------
+    fig : matplotlib.figure.Figure
+        Figura con los cuatro gráficos
+    """
+    import matplotlib.gridspec as gridspec
+    
+    # Detectar equipo si no se proporciona
+    if team_name is None:
+        unique_teams = df[filter_col].dropna().unique()
+        if len(unique_teams) == 1:
+            team_name = unique_teams[0]
+            df_filtered = df.copy()
+        else:
+            df_filtered = df.copy()
+    else:
+        df_filtered = df[df[filter_col] == team_name].copy()
+    
+    # Filtrar centros (cross == '-1' o cross.notna())
+    df_centros = df_filtered[
+        (df_filtered['cross'] == '-1') | (df_filtered['cross'].notna())
+    ].copy()
+    
+    if df_centros.empty:
+        return None
+    
+    # Obtener eventos únicos
+    base_df = df_centros.drop_duplicates('IdEvent').copy()
+    
+    if base_df.empty:
+        return None
+    
+    # Crear figura con GridSpec 2x2
+    fig = plt.figure(figsize=(18, 12))
+    gs = gridspec.GridSpec(2, 2, figure=fig)
+    axes = [fig.add_subplot(gs[i, j]) for i in range(2) for j in range(2)]
+    
+    pitch = VerticalPitch(pitch_type='opta', half=True)
+    
+    # Definir filtros para cada subplot
+    incompletos = base_df[base_df['Outcome'] == 0]
+    completos = base_df[base_df['Outcome'] == 1]
+    
+    filtros = {
+        f"De donde vinieron los centros (incompletos) | {len(incompletos)} total": {
+            "df": incompletos,
+            "cols": ("x", "y")
+        },
+        "Donde terminaron (incompletos)": {
+            "df": incompletos,
+            "cols": ("end_x", "end_y")
+        },
+        f"De donde vinieron los centros (completos) | {len(completos)} total": {
+            "df": completos,
+            "cols": ("x", "y")
+        },
+        "Donde terminaron (completos)": {
+            "df": completos,
+            "cols": ("end_x", "end_y")
+        }
+    }
+    
+    # Dibujar cada cancha
+    for ax, (titulo, info) in zip(axes, filtros.items()):
+        df_subset = info["df"]
+        x_col, y_col = info["cols"]
+        
+        if df_subset.empty:
+            pitch.draw(ax=ax)
+            ax.set_facecolor('#22312b')
+            ax.set_title(titulo, fontsize=14)
+            continue
+        
+        # Asignar zonas
+        df_subset = df_subset.copy()
+        df_subset['zone_area'] = df_subset.apply(
+            lambda row: assign_shot_zone(row[y_col], row[x_col]), axis=1
+        )
+        
+        # Calcular estadísticas por zona
+        zone_stats = df_subset.groupby('zone_area').size().reset_index(name='count')
+        zone_stats['pct'] = zone_stats['count'] / len(df_subset)
+        
+        max_pct = zone_stats['pct'].max() if zone_stats['pct'].max() > 0 else 1.0
+        
+        # Dibujar cancha
+        pitch.draw(ax=ax)
+        ax.set_facecolor('white')
+        
+        # Dibujar puntos de centros
+        pitch.scatter(
+            df_subset[x_col],
+            df_subset[y_col],
+            ax=ax,
+            zorder=2,
+            color='green',
+            edgecolor='black',
+            alpha=0.6
+        )
+        
+        # Colorear zonas
+        for _, row in zone_stats.iterrows():
+            zone = row['zone_area']
+            shot_pct = row['pct']
+            
+            if zone not in zone_areas:
+                continue
+            
+            bounds = zone_areas[zone]
+            x_lim = [bounds['x_lower_bound'], bounds['x_upper_bound']]
+            y1, y2 = bounds['y_lower_bound'], bounds['y_upper_bound']
+            
+            ax.fill_between(
+                x=x_lim,
+                y1=y1,
+                y2=y2,
+                color='green',
+                alpha=(shot_pct / max_pct) if max_pct > 0 else 0.1,
+                zorder=0,
+                ec='None'
+            )
+            
+            # Texto en el centro de cada zona
+            if shot_pct >= MIN_PCT_THRESHOLD:
+                if shot_pct > HIGH_PCT_THRESHOLD:
+                    color_text = 'white'
+                    fore_color = 'black'
+                else:
+                    color_text = 'black'
+                    fore_color = 'white'
+                
+                x_pos = x_lim[0] + (x_lim[1] - x_lim[0]) / 2
+                y_pos = y1 + (y2 - y1) / 2
+                
+                text_ = ax.annotate(
+                    xy=(x_pos, y_pos),
+                    text=f'{shot_pct:.0%}',
+                    ha='center',
+                    va='center',
+                    color=color_text,
+                    weight='bold',
+                    size=12
+                )
+                text_.set_path_effects([
+                    pe.Stroke(linewidth=1.5, foreground=fore_color),
+                    pe.Normal()
+                ])
+        
+        # Líneas delimitadoras
+        _draw_zone_delimiter_lines(ax)
+        
+        ax.set_title(titulo, fontsize=14)
+    
+    plt.tight_layout()
+    return fig
