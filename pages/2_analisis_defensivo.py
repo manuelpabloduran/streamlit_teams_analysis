@@ -14,7 +14,10 @@ from utils.plots import (
     plot_area_entry_by_corridor, 
     plot_distribution_comparison, 
     plot_area_entry_drives, 
-    plot_area_entry_drives_by_corridor
+    plot_area_entry_drives_by_corridor,
+    plot_team_shots,
+    plot_set_piece_shots,
+    plot_crosses_analysis
 )
 from streamlit_plotly_events import plotly_events
 from preprocessing import preprocess_data
@@ -206,6 +209,55 @@ if team_name:
     else:
         st.warning(f"No se pudo generar el dashboard de finalización para {team_name}.")
 
+    st.subheader("Disparos Recibidos del Rival")
+    
+    # Filtrar eventos de tiro para obtener los jugadores disponibles
+    shot_events = ['Goal', 'Attempt Saved', 'Miss', 'Post']
+    df_shots_for_filter = df_page_filtered[df_page_filtered['NaEventType'].isin(shot_events)].copy()
+    
+    # Obtener jugadores únicos que tienen tiros (del rival)
+    available_players_shots = sorted(df_shots_for_filter['NaPlayer'].dropna().unique())
+    
+    # Filtro de jugador para la sección de disparos recibidos
+    shots_player_name = st.selectbox(
+        'Selección de Jugador del Rival para Disparos',
+        ["Todos"] + available_players_shots,
+        key='defensive_shots_player_filter'
+    )
+    
+    # Generar el gráfico de disparos recibidos
+    fig_shots = plot_team_shots(df_page_filtered, team_name=team_name, player_name=shots_player_name, filter_col='RivalName')
+    if fig_shots:
+        st.pyplot(fig_shots, use_container_width=True)
+    else:
+        st.warning(f"No se pudo generar el gráfico de disparos recibidos para {team_name}" + (f" - {shots_player_name}" if shots_player_name != "Todos" else "") + ".")
+
+    st.subheader("Disparos en Pelota Parada Recibidos del Rival")
+    
+    # Filtrar eventos de tiro en pelota parada para obtener los jugadores disponibles
+    shot_events_set_piece = ['Goal', 'Attempt Saved', 'Miss', 'Post']
+    df_shots_set_piece = df_page_filtered[
+        (df_page_filtered['NaEventType'].isin(shot_events_set_piece)) &
+        (df_page_filtered['play_type'].isin(['From_corner', 'Free_kick', 'Set_piece', 'Throw-in_set_piece']))
+    ].copy()
+    
+    # Obtener jugadores únicos que tienen tiros en pelota parada (del rival)
+    available_players_set_piece = sorted(df_shots_set_piece['NaPlayer'].dropna().unique())
+    
+    # Filtro de jugador para la sección de disparos en pelota parada recibidos
+    set_piece_player_name = st.selectbox(
+        'Selección de Jugador del Rival para Disparos en Pelota Parada',
+        ["Todos"] + available_players_set_piece,
+        key='defensive_set_piece_player_filter'
+    )
+    
+    # Generar el gráfico de disparos en pelota parada recibidos
+    fig_set_piece = plot_set_piece_shots(df_page_filtered, team_name=team_name, player_name=set_piece_player_name, filter_col='RivalName')
+    if fig_set_piece:
+        st.pyplot(fig_set_piece, use_container_width=True)
+    else:
+        st.warning(f"No se pudo generar el gráfico de disparos en pelota parada recibidos para {team_name}" + (f" - {set_piece_player_name}" if set_piece_player_name != "Todos" else "") + ".")
+
     st.header("Análisis de Progresión del Rival")
 
     col_entries1, col_entries2 = st.columns(2)
@@ -259,5 +311,13 @@ if team_name:
             st.pyplot(fig_drive_corridor, use_container_width=True)
         else:
             st.warning("No se pudo generar el gráfico de conducciones al área por pasillo del rival.")
+
+    st.markdown("---")
+    st.subheader("Análisis de Centros del Rival")
+    fig_crosses = plot_crosses_analysis(df_page_filtered, team_name, filter_col='RivalName')
+    if fig_crosses:
+        st.pyplot(fig_crosses, use_container_width=True)
+    else:
+        st.warning("No se pudo generar el gráfico de análisis de centros del rival.")
 else:
     st.info("Selecciona un equipo para comenzar el análisis defensivo.")

@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from utils.plots import plot_team_progression_with_hist, plot_offensive_sequences, plot_player_xg_xgot, plot_goals_sunburst, plot_offensive_dashboard, plot_goal_actions_bar, plot_xg_actions_bar, plot_pass_matrix, plot_pass_xg_matrix, plot_area_entries_team, plot_rival_half_entries_team, plot_area_entry_passes, plot_area_entry_by_corridor, plot_distribution_comparison, plot_area_entry_drives, plot_area_entry_drives_by_corridor
+from utils.plots import plot_team_progression_with_hist, plot_offensive_sequences, plot_player_xg_xgot, plot_goals_sunburst, plot_offensive_dashboard, plot_goal_actions_bar, plot_xg_actions_bar, plot_pass_matrix, plot_pass_xg_matrix, plot_area_entries_team, plot_rival_half_entries_team, plot_area_entry_passes, plot_area_entry_by_corridor, plot_distribution_comparison, plot_area_entry_drives, plot_area_entry_drives_by_corridor, plot_team_shots, plot_set_piece_shots, plot_crosses_analysis
 from streamlit_plotly_events import plotly_events
 from preprocessing import preprocess_data
 
@@ -328,6 +328,55 @@ if team_name:
     else:
         st.warning(f"No se pudo generar el dashboard de finalización para {team_name}.")
 
+    st.subheader("Disparos del equipo")
+    
+    # Filtrar eventos de tiro para obtener los jugadores disponibles
+    shot_events = ['Goal', 'Attempt Saved', 'Miss', 'Post']
+    df_shots_for_filter = df_page_filtered[df_page_filtered['NaEventType'].isin(shot_events)].copy()
+    
+    # Obtener jugadores únicos que tienen tiros
+    available_players_shots = sorted(df_shots_for_filter['NaPlayer'].dropna().unique())
+    
+    # Filtro de jugador para la sección de disparos
+    shots_player_name = st.selectbox(
+        'Selección de Jugador para Disparos',
+        ["Todos"] + available_players_shots,
+        key='shots_player_filter'
+    )
+    
+    # Generar el gráfico de disparos
+    fig_shots = plot_team_shots(df_page_filtered, team_name=team_name, player_name=shots_player_name)
+    if fig_shots:
+        st.pyplot(fig_shots, use_container_width=True)
+    else:
+        st.warning(f"No se pudo generar el gráfico de disparos para {team_name}" + (f" - {shots_player_name}" if shots_player_name != "Todos" else "") + ".")
+
+    st.subheader("Disparos en Pelota Parada")
+    
+    # Filtrar eventos de tiro en pelota parada para obtener los jugadores disponibles
+    shot_events_set_piece = ['Goal', 'Attempt Saved', 'Miss', 'Post']
+    df_shots_set_piece = df_page_filtered[
+        (df_page_filtered['NaEventType'].isin(shot_events_set_piece)) &
+        (df_page_filtered['play_type'].isin(['From_corner', 'Free_kick', 'Set_piece', 'Throw-in_set_piece']))
+    ].copy()
+    
+    # Obtener jugadores únicos que tienen tiros en pelota parada
+    available_players_set_piece = sorted(df_shots_set_piece['NaPlayer'].dropna().unique())
+    
+    # Filtro de jugador para la sección de disparos en pelota parada
+    set_piece_player_name = st.selectbox(
+        'Selección de Jugador para Disparos en Pelota Parada',
+        ["Todos"] + available_players_set_piece,
+        key='set_piece_player_filter'
+    )
+    
+    # Generar el gráfico de disparos en pelota parada
+    fig_set_piece = plot_set_piece_shots(df_page_filtered, team_name=team_name, player_name=set_piece_player_name)
+    if fig_set_piece:
+        st.pyplot(fig_set_piece, use_container_width=True)
+    else:
+        st.warning(f"No se pudo generar el gráfico de disparos en pelota parada para {team_name}" + (f" - {set_piece_player_name}" if set_piece_player_name != "Todos" else "") + ".")
+
     st.header("Progresiones")
 
     # --- Filtro de acciones progresivas ---
@@ -475,6 +524,14 @@ if team_name:
             st.pyplot(fig_drive_corridor, use_container_width=True)
         else:
             st.warning("No se pudo generar el gráfico de conducciones al área por pasillo.")
+
+    st.markdown("---")
+    st.subheader("Análisis de Centros")
+    fig_crosses = plot_crosses_analysis(df_page_filtered, team_name)
+    if fig_crosses:
+        st.pyplot(fig_crosses, use_container_width=True)
+    else:
+        st.warning("No se pudo generar el gráfico de análisis de centros.")
 
     with st.expander("Análisis de progresión por pasillo en campo rival", expanded=False):
         # Para esta sección, usamos un dataframe filtrado solo por equipo, no por los otros filtros.
