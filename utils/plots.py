@@ -10,6 +10,7 @@ from scipy.interpolate import make_interp_spline
 from collections import defaultdict
 import matplotlib.patheffects as pe
 from matplotlib.lines import Line2D
+import matplotlib.patheffects as path_effects
 
 # Definición de pasillos_y para plot_team_progression_with_hist
 pasillos_y = {
@@ -19,6 +20,125 @@ pasillos_y = {
     'Pasillo Exterior Izquierdo': (80, 100),
     'Pasillo Exterior Derecho': (0, 20)
 }
+
+zone_areas_full = {
+    'zone_1':{
+        'y_lower_bound': 78.9, 'y_upper_bound': 100,
+        'x_lower_bound': 83, 'x_upper_bound': 100,
+    },
+    'zone_2':{
+        'y_lower_bound': 0, 'y_upper_bound': 21.1,
+        'x_lower_bound': 83, 'x_upper_bound': 100,
+    },
+    'zone_3':{
+        'y_lower_bound': 78.9, 'y_upper_bound': 100,
+        'x_lower_bound': 66.5, 'x_upper_bound': 83,
+    },
+    'zone_4':{
+        'y_lower_bound': 0, 'y_upper_bound': 21.1,
+        'x_lower_bound': 66.5, 'x_upper_bound': 83,
+    },
+    'zone_5':{
+        'y_lower_bound': 21.1, 'y_upper_bound': 36.8,
+        'x_lower_bound': 83, 'x_upper_bound': 100,
+    },
+    'zone_6':{
+        'y_lower_bound': 63.2, 'y_upper_bound': 78.9,
+        'x_lower_bound': 83, 'x_upper_bound': 100,
+    },
+    'zone_7':{
+        'y_lower_bound': 36.8, 'y_upper_bound': 63.2,
+        'x_lower_bound': 83, 'x_upper_bound': 100,
+    },
+    'zone_8':{
+        'y_lower_bound': 36.8, 'y_upper_bound': 63.2,
+        'x_lower_bound': 66.5, 'x_upper_bound': 83,
+    },
+    'zone_9':{
+        'y_lower_bound': 21.1, 'y_upper_bound': 36.8,
+        'x_lower_bound': 66.5, 'x_upper_bound': 83,
+    },
+    'zone_10':{
+        'y_lower_bound': 63.2, 'y_upper_bound': 78.9,
+        'x_lower_bound': 66.5, 'x_upper_bound': 83,
+    },
+    'zone_11':{
+        'y_lower_bound': 36.8, 'y_upper_bound': 63.2,
+        'x_lower_bound': 66.5, 'x_upper_bound': 83,
+    },
+    'zone_12':{
+        'y_lower_bound': 78.9, 'y_upper_bound': 100,
+        'x_lower_bound': 50, 'x_upper_bound': 66.5,
+    },
+    'zone_13':{
+        'y_lower_bound': 0, 'y_upper_bound': 21.1,
+        'x_lower_bound': 50, 'x_upper_bound': 66.5,
+    },
+    'zone_14':{
+        'y_lower_bound': 21.1, 'y_upper_bound': 36.8,
+        'x_lower_bound': 50, 'x_upper_bound': 66.5,
+    },
+    'zone_15':{
+        'y_lower_bound': 36.8, 'y_upper_bound': 63.2,
+        'x_lower_bound': 50, 'x_upper_bound': 66.5,
+    },
+    'zone_16':{
+        'y_lower_bound': 63.2, 'y_upper_bound': 78.9,
+        'x_lower_bound': 50, 'x_upper_bound': 66.5,
+    },
+    'zone_17':{
+        'y_lower_bound': 0, 'y_upper_bound': 21.1,
+        'x_lower_bound': 33.5, 'x_upper_bound': 50,
+    },
+    'zone_18':{
+        'y_lower_bound': 21.1, 'y_upper_bound': 36.8,
+        'x_lower_bound': 33.5, 'x_upper_bound': 50,
+    },
+    'zone_19':{
+        'y_lower_bound': 36.8, 'y_upper_bound': 63.2,
+        'x_lower_bound': 33.5, 'x_upper_bound': 50,
+    },
+    'zone_20':{
+        'y_lower_bound': 63.2, 'y_upper_bound': 78.9,
+        'x_lower_bound': 33.5, 'x_upper_bound': 50,
+    },
+    'zone_21':{
+        'y_lower_bound': 78.9, 'y_upper_bound': 100,
+        'x_lower_bound': 33.5, 'x_upper_bound': 50,
+    },
+    'zone_22': {'y_lower_bound': 0,    'y_upper_bound': 21.1, 'x_lower_bound': 0,     'x_upper_bound': 16.75},
+    'zone_23': {'y_lower_bound': 0,    'y_upper_bound': 21.1, 'x_lower_bound': 16.75, 'x_upper_bound': 33.5},
+
+    'zone_24': {'y_lower_bound': 21.1, 'y_upper_bound': 36.8, 'x_lower_bound': 0,     'x_upper_bound': 16.75},
+    'zone_25': {'y_lower_bound': 21.1, 'y_upper_bound': 36.8, 'x_lower_bound': 16.75, 'x_upper_bound': 33.5},
+
+    'zone_26': {'y_lower_bound': 36.8, 'y_upper_bound': 63.2, 'x_lower_bound': 0,     'x_upper_bound': 16.75},
+    'zone_27': {'y_lower_bound': 36.8, 'y_upper_bound': 63.2, 'x_lower_bound': 16.75, 'x_upper_bound': 33.5},
+
+    'zone_28': {'y_lower_bound': 63.2, 'y_upper_bound': 78.9, 'x_lower_bound': 0,     'x_upper_bound': 16.75},
+    'zone_29': {'y_lower_bound': 63.2, 'y_upper_bound': 78.9, 'x_lower_bound': 16.75, 'x_upper_bound': 33.5},
+
+    'zone_30': {'y_lower_bound': 78.9, 'y_upper_bound': 100,  'x_lower_bound': 0,     'x_upper_bound': 16.75},
+    'zone_31': {'y_lower_bound': 78.9, 'y_upper_bound': 100,  'x_lower_bound': 16.75, 'x_upper_bound': 33.5},
+}
+
+def assign_shot_zone_press(x,y):
+    '''
+    This function returns the zone based on the x & y coordinates of the shot
+    taken.
+    Args:
+        - x (float): the x position of the shot based on a vertical grid.
+        - y (float): the y position of the shot based on a vertical grid.
+    '''
+
+    global zone_areas_full
+
+    # Conditions
+
+    for zone in zone_areas_full:
+        if (x >= zone_areas_full[zone]['x_lower_bound']) & (x <= zone_areas_full[zone]['x_upper_bound']):
+            if (y >= zone_areas_full[zone]['y_lower_bound']) & (y <= zone_areas_full[zone]['y_upper_bound']):
+                return zone
 
 def plot_xg_scatter(df):
     """
@@ -178,6 +298,452 @@ def plot_team_progression_with_hist(df_analisis_progreso, team_name, conteo_inic
     ax_pitch.tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
     
     return fig
+
+
+def plot_pressure_kde(df, filter_col=None, team_name=None, cmap='OrRd', levels=100, fill=True, bandwidth=None, scatter_on_fail=True, show_zones=True, facecolor="#EFE9E6", zone_color="#ab2a3e", title_suffix=''):
+    """
+    Plotea un mapa de densidad (KDE) de las posiciones de presión usando mplsoccer.Pitch.
+
+    Ahora incluye la rejilla por zonas (como en `test.ipynb`) y rellena cada zona
+    proporcionalmente al número de presiones que cayeron en ella.
+
+    Parámetros adicionales:
+    - show_zones: si True rellena las zonas definidas en `zone_areas` con alpha proporcional.
+    - facecolor: color de fondo de la cancha (p.ej. '#EFE9E6').
+    - zone_color: color base para el relleno de zonas.
+    """
+    if df is None or df.empty:
+        return None
+
+    df_plot = df.copy()
+    if team_name and filter_col:
+        df_plot = df_plot[df_plot[filter_col] == team_name]
+
+    if df_plot.empty:
+        return None
+
+    # Asegurar que ambas columnas existan
+    if 'positionX' not in df_plot.columns or 'positionY' not in df_plot.columns:
+        return None
+
+    # Drop rows with NA in either positionX or positionY so x and y align
+    df_plot = df_plot.dropna(subset=['positionX', 'positionY']).copy()
+
+    if df_plot.empty:
+        return None
+
+    x = pd.to_numeric(df_plot['positionX'], errors='coerce')
+    y = pd.to_numeric(df_plot['positionY'], errors='coerce')
+
+    mask = x.notna() & y.notna()
+    x = x[mask]
+    y = y[mask]
+
+    if x.empty or y.empty:
+        return None
+
+    # Compute zone membership if needed
+    zones_series = df_plot.apply(lambda r: assign_shot_zone_press(r['positionX'], r['positionY']), axis=1)
+    df_plot = df_plot.assign(_zone=zones_series.values)
+
+    pitch = Pitch(pitch_type='opta')
+    fig, ax = pitch.draw(figsize=(8, 6))
+    ax.set_facecolor(facecolor)
+
+    # dibujar cortes y líneas de zona (misma estética que ejemplo)
+    ax.plot([16.75, 16.75], [0, 100], ls=':', color='black')   # nuevo corte banda izquierda
+    ax.plot([33.5, 33.5], [0, 100], ls='-', lw=2, color='black')
+    ax.plot([50, 50], [0, 100], ls=':', color='black')
+    ax.plot([66.5, 66.5], [0, 100], ls=':', color='black')
+    ax.plot([83, 83], [0, 100], ls=':', color='black')
+
+    ax.plot([33.5, 100], [21.1,21.1], ls=':', color='black')
+    ax.plot([33.5, 100], [36.8,36.8], ls=':', color='black')
+    ax.plot([33.5, 100], [63.2,63.2], ls=':', color='black')
+    ax.plot([33.5, 100], [78.9,78.9], ls=':', color='black')
+
+    # Try to draw KDE in the background
+    plotted_kde = False
+    kde_kwargs = {'levels': levels, 'fill': fill, 'zorder': -1, 'thresh': 0}
+    if bandwidth is not None:
+        kde_kwargs['bw_method'] = bandwidth
+
+    try:
+        pitch.kdeplot(x, y, ax=ax, cmap=cmap, **kde_kwargs)
+        plotted_kde = True
+    except Exception:
+        try:
+            sns.kdeplot(x=x, y=y, ax=ax, cmap=cmap, fill=fill, levels=levels)
+            plotted_kde = True
+        except Exception:
+            plotted_kde = False
+
+    # If KDE failed, show scatter points as fallback
+    if not plotted_kde and scatter_on_fail:
+        ax.scatter(x, y, c='red', s=18, alpha=0.6, zorder=1)
+
+    # If requested, fill zones proportionally
+    if show_zones:
+        # count per zone
+        counts = df_plot['_zone'].value_counts()
+        if not counts.empty:
+            max_value = counts.max()
+            for zone in zone_areas_full:
+                if zone in counts.index:
+                    shot_count = counts[zone]
+                    shot_pct = shot_count / max_value if max_value else 0
+                    x_lim = [zone_areas_full[zone]['x_lower_bound'], zone_areas_full[zone]['x_upper_bound']]
+                    y1 = zone_areas_full[zone]['y_lower_bound']
+                    y2 = zone_areas_full[zone]['y_upper_bound']
+                    ax.fill_between(
+                        x=x_lim,
+                        y1=y1, y2=y2,
+                        color=zone_color, alpha=(shot_pct),
+                        zorder=0, ec='None')
+
+                    # text styling similar to example
+                    if shot_pct > 0.075:
+                        color_text = 'white'
+                        fore_color ='black'
+                    else:
+                        color_text = 'black'
+                        fore_color = 'white'
+
+                    if shot_pct > 0.025:
+                        x_pos = x_lim[0] + abs(x_lim[0] - x_lim[1]) / 2
+                        y_pos = y1 + abs(y1 - y2) / 2
+                        text_ = ax.annotate(
+                            xy=(x_pos, y_pos),
+                            text=f'{shot_count}',
+                            ha='center',
+                            va='center',
+                            color=color_text,
+                            weight='bold',
+                            size=10
+                        )
+                        text_.set_path_effects([pe.Stroke(linewidth=1.5, foreground=fore_color), pe.Normal()])
+
+    # Title
+    title = "Mapa de Presiones"
+    if team_name:
+        title += f" - {team_name}"
+    if title_suffix:
+        title += f" {title_suffix}"
+    try:
+        DC_to_FC = ax.transData.transform
+        FC_to_NFC = fig.transFigure.inverted().transform
+        DC_to_NFC = lambda x: FC_to_NFC(DC_to_FC(x))
+        title_x, title_y = DC_to_NFC((50, 108))
+        fig.text(title_x, title_y, title, ha='center', va='center', fontsize=16)
+    except Exception:
+        fig.suptitle(title, fontsize=16)
+
+    # Ajustes visuales
+    ax.set_xlim(0, 105)
+    ax.set_ylim(-5, 105)
+
+    # Invertir eje X
+
+    # Dirección de juego (flecha)
+    ax.annotate(
+        'Dirección de juego',
+        xy=(70, -3),
+        xytext=(90, -3),
+        arrowprops=dict(
+            arrowstyle='->',
+            lw=2,
+            color='black'
+        ),
+        ha='center',
+        va='center',
+        fontsize=10,
+        color='black',
+        zorder=5
+    )
+
+    ax.invert_xaxis()
+
+    return fig
+
+def highlight_team_scatter(scatter_df, team_choice):
+    fig = px.scatter(
+        scatter_df,
+        x='shirtNumber_pressures',
+        y='shirtNumber_total',
+        size_max=100,
+        title='Presiones: realizadas vs recibidas',
+        labels={
+            'shirtNumber_pressures': 'Presiones realizadas',
+            'shirtNumber_total': 'Presiones recibidas'
+        },
+        hover_name='homeTeamName',
+        hover_data={
+            'shirtNumber_pressures': True,
+            'shirtNumber_total': True,
+            'equipo_vs_name': False
+        }
+    )
+
+    fig.update_traces(
+        hovertemplate=
+            "<b>%{hovertext}</b><br>" +
+            "Presiones realizadas: %{x}<br>" +
+            "Presiones recibidas: %{y}<extra></extra>"
+    )
+
+    if team_choice == 'Todos':
+        return fig
+
+    fig.update_traces(
+        selector=dict(mode='markers'),
+        marker=dict(opacity=0.3)
+    )
+
+    df_team = scatter_df[scatter_df['equipo_vs_name'] == team_choice]
+
+    if df_team.empty:
+        return fig
+
+    fig.add_trace(
+        go.Scatter(
+            x=df_team['shirtNumber_pressures'],
+            y=df_team['shirtNumber_total'],
+            mode='markers',
+            name=team_choice,
+            text=df_team['equipo_vs_name'],
+            hovertemplate=
+                "<b>%{text}</b><br>" +
+                "Presiones realizadas: %{x}<br>" +
+                "Presiones recibidas: %{y}<extra></extra>",
+            marker=dict(
+                size=16,
+                color='red',
+                opacity=0.9,
+                line=dict(width=1, color='black')
+            )
+        )
+    )
+
+    x_ref = scatter_df['shirtNumber_pressures'].mean()
+    y_ref = scatter_df['shirtNumber_total'].mean()
+
+    fig.add_vline(
+        x=x_ref,
+        line_width=2,
+        line_dash="dash",
+        line_color="gray",
+        annotation_text="Prom. presiones realizadas",
+        annotation_position="top"
+    )
+
+    fig.add_hline(
+        y=y_ref,
+        line_width=2,
+        line_dash="dash",
+        line_color="gray",
+        annotation_text="Prom. presiones recibidas",
+        annotation_position="right"
+    )
+
+    return fig
+
+def plot_goal_kicks(saques_arco, team_name, facecolor="#EFE9E6"):
+
+    saques_arco['zone_area'] = [assign_shot_zone_press(x,y) for x,y in zip(saques_arco['endX'], saques_arco['endY'])]
+    data = saques_arco.groupby(['homeTeamName', 'zone_area']).apply(lambda x: x.shape[0]).reset_index()
+    data.rename(columns={0:'num_shots'}, inplace=True)
+    total_shots = data.groupby(['homeTeamName'])['num_shots'].sum().reset_index()
+    total_shots.rename(columns={'num_shots':'total_shots'}, inplace=True)
+
+    data = pd.merge(data, total_shots, on='homeTeamName', how='left')
+    data['pct_shots'] = data['num_shots']/data['total_shots']
+
+    pitch = Pitch(pitch_type='opta')
+    fig, ax = pitch.draw(figsize=(8, 6))
+    ax.set_facecolor(facecolor)
+
+    ax.set_facecolor(facecolor)
+    ax.plot([16.75, 16.75], [0, 100], ls=':', color='black')   # nuevo corte banda izquierda
+    ax.plot([33.5, 33.5], [0, 100], ls='-', lw=2, color='black')
+    ax.plot([50, 50], [0, 100], ls=':', color='black')
+    ax.plot([66.5, 66.5], [0, 100], ls=':', color='black')
+    ax.plot([83, 83], [0, 100], ls=':', color='black')
+
+    ax.plot([33.5, 100], [21.1,21.1], ls=':', color='black')
+    ax.plot([33.5, 100], [36.8,36.8], ls=':', color='black')
+    ax.plot([33.5, 100], [63.2,63.2], ls=':', color='black')
+    ax.plot([33.5, 100], [78.9,78.9], ls=':', color='black')
+    # soportar caso: todos los equipos
+    if team_name is None:
+        plot_df = data.groupby('zone_area').agg({'num_shots':'sum','total_shots':'sum'}).reset_index()
+        plot_df['pct_shots'] = plot_df['num_shots'] / plot_df['total_shots']
+    else:
+        plot_df = data[data['homeTeamName'] == team_name].reset_index(drop=True)
+    
+    # si no hay datos, devolver None para que la página muestre mensaje apropiado
+    if plot_df.empty:
+        return None
+    
+    print(plot_df)
+
+    max_value = plot_df['pct_shots'].max()
+    
+    for zone in plot_df['zone_area']:
+        shot_pct = plot_df[plot_df['zone_area'] == zone]['pct_shots'].iloc[0]
+        x_lim = [zone_areas_full[zone]['x_lower_bound'], zone_areas_full[zone]['x_upper_bound']]
+        y1 = zone_areas_full[zone]['y_lower_bound']
+        y2 = zone_areas_full[zone]['y_upper_bound']
+        ax.fill_between(
+            x=x_lim, 
+            y1=y1, y2=y2, 
+            color='#ab2a3e', alpha=(shot_pct/max_value),
+            zorder=0, ec='None')
+        if shot_pct > 0.075:
+                color_text = 'white'
+                fore_color ='black'
+        else:
+                color_text = 'black'
+                fore_color = 'white'
+        if shot_pct > 0.015:
+            x_pos = x_lim[0] + abs(x_lim[0] - x_lim[1])/2
+            y_pos = y1 + abs(y1 - y2)/2
+            text_ = ax.annotate(
+                xy=(x_pos, y_pos),
+                text=f'{shot_pct:.0%}',
+                ha='center',
+                va='center',
+                color=color_text,
+                weight='bold',
+                size=12
+            )
+            text_.set_path_effects(
+                [path_effects.Stroke(linewidth=1.5, foreground=fore_color), path_effects.Normal()]
+            )
+    
+    ax.text(50, 108, team_name,
+            ha='center', va='center', fontsize=24)
+    
+    # -- Transformation functions
+    DC_to_FC = ax.transData.transform
+    FC_to_NFC = fig.transFigure.inverted().transform
+    # -- Take data coordinates and transform them to normalized figure coordinates
+    DC_to_NFC = lambda x: FC_to_NFC(DC_to_FC(x))
+    ax_coords = DC_to_NFC((12,101))
+    ax_size = 0.1
+
+    return fig
+
+
+def plot_goal_kicks_effectiveness(saques_arco, team_name=None):
+    """Genera un scatter donde X = distancia promedio de terminación (endX)
+    y Y = % de efectividad por equipo para saques de arco.
+
+    Parámetros:
+    - saques_arco: DataFrame con al menos las columnas `endX` y `outcome_value` (o `outcome_type`).
+    - team_name: nombre de equipo para resaltar (opcional). Si es `None` o 'Todos', muestra todos.
+
+    Devuelve: figura plotly o None si no hay datos.
+    """
+
+    if saques_arco is None or saques_arco.empty:
+        return None
+
+    df = saques_arco.copy()
+
+    # Normalizar team_name cuando viene como 'Todos'
+    if team_name == 'Todos':
+        team_name = None
+
+    # Determinar columna de equipo disponible
+    if 'homeTeamName' in df.columns:
+        team_col = 'homeTeamName'
+    elif 'teamName' in df.columns:
+        team_col = 'teamName'
+    else:
+        # no hay columna de equipo
+        return None
+
+    # Asegurar columnas necesarias
+    if 'endX' not in df.columns:
+        return None
+
+    if 'outcome_value' not in df.columns:
+        # intentar inferir outcome_value a partir de outcome_type (Goal = 1)
+        if 'outcome_type' in df.columns:
+            df['outcome_value'] = np.where(df['outcome_type'] == 'Goal', 1, 0)
+        else:
+            df['outcome_value'] = 0
+
+    print("teamCol", team_col)
+
+    # Preparar la figura
+    fig = px.scatter(
+        df,
+        x='endX',
+        y='% de efectividad',
+        size='outcome_type',
+        hover_name=team_col,
+        hover_data={
+            'endX': ':.2f',
+            '% de efectividad': ':.2f',
+            'outcome_type': True,
+            team_col: False
+        },
+        labels={
+            'endX': 'Distancia promedio de terminación',
+            '% de efectividad': '% de efectividad',
+            'outcome_type': 'Total saques'
+        },
+        title='Saques de Arco — Distancia vs % de efectividad'
+    )
+
+    fig.update_traces(marker=dict(opacity=0.7, line=dict(width=0.5, color='black')))
+
+    # Resaltar equipo si se indica
+    if team_name:
+        if team_name in df[team_col].values:
+            others = df[df[team_col] != team_name]
+            sel = df[df[team_col] == team_name]
+            # atenuar otros
+            fig.update_traces(selector=dict(mode='markers'), marker=dict(opacity=0.25))
+            # añadir traza destacada
+            fig.add_trace(
+                go.Scatter(
+                    x=sel['endX'],
+                    y=sel['% de efectividad'],
+                    mode='markers+text',
+                    text=team_name,
+                    textposition='top center',
+                    marker=dict(size=sel['outcome_type'] / 4, color='red', opacity=0.95, line=dict(width=1, color='black')),
+                    hoverinfo='text'
+                )
+            )
+    fig.update_xaxes(title_text='Distancia promedio de terminación (m)')
+    fig.update_yaxes(title_text='% de efectividad')
+
+    x_ref = df['endX'].mean()
+    y_ref = df['% de efectividad'].mean()
+
+    fig.add_vline(
+        x=x_ref,
+        line_width=2,
+        line_dash="dash",
+        line_color="gray",
+        annotation_text="Prom. distancia",
+        annotation_position="top"
+    )
+
+    fig.add_hline(
+        y=y_ref,
+        line_width=2,
+        line_dash="dash",
+        line_color="gray",
+        annotation_text="Prom. saques totales",
+        annotation_position="right"
+    )
+
+    return fig
+
 
 def plot_offensive_sequences(df_filtrado, team_name, filter_col='TeamName'):
     """

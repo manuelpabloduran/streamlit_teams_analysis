@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+import json
+import ast
 
 def refine_set_pieces(df):
     """
@@ -179,3 +181,90 @@ def preprocess_data(df):
     df_final['possession_type'] = df_final['possession_type']
 
     return df_final
+
+def add_pressures(df):
+    """
+    Extrae y normaliza las filas con información de presión del DataFrame original.
+    Devuelve un DataFrame con las presiones ya parseadas y columnas útiles
+    (`pressure_parsed`, `pressureReceived`, `positionX`, `positionY`, `equipo_vs_name`, `fecha`).
+    """
+    team_ids = pd.read_json('team_ids.json')
+
+    def parse_pressure(x):
+        if pd.isna(x):
+            return {}
+        if isinstance(x, dict):
+            return x
+        if isinstance(x, str):
+            try:
+                return json.loads(x)
+            except json.JSONDecodeError:
+                try:
+                    return ast.literal_eval(x)
+                except Exception:
+                    return {}
+        return {}
+
+    df = df.copy()
+
+    # Si no existe la columna `pressure`, devolvemos un dataframe vacío
+    if 'pressure' not in df.columns:
+        return pd.DataFrame()
+
+    # Filtrar solo filas con presión
+    presiones = df[df['pressure'].notna()].copy()
+
+    # 1. Parsear todo a dict
+    presiones["pressure_parsed"] = presiones["pressure"].apply(parse_pressure)
+
+    # 2. Explotar a columnas
+    qual_presiones = pd.json_normalize(presiones["pressure_parsed"]) if not presiones["pressure_parsed"].empty else pd.DataFrame()
+
+    # 3. Unir al dataframe original
+    presiones = presiones.drop(columns=["pressure"]).join(qual_presiones)
+
+    presiones["pressureReceived"] = presiones["pressure_parsed"].apply(
+        lambda x: x.get("pressureReceived", {}).get("value") if isinstance(x, dict) else np.nan
+    )
+
+    presiones["player"] = presiones["pressure_parsed"].apply(
+        lambda x: x.get("player", []) if isinstance(x, dict) else []
+    )
+
+    # Explode players y normalizar sus columnas si existen
+    presiones = presiones.explode("player").reset_index(drop=True)
+    if 'player' in presiones.columns:
+        player_cols = pd.json_normalize(presiones["player"]) if not presiones["player"].isna().all() else pd.DataFrame()
+        presiones = presiones.drop(columns=["player"])
+        if not player_cols.empty:
+            presiones = pd.concat([presiones.reset_index(drop=True), player_cols.reset_index(drop=True)], axis=1)
+
+    presiones["positionX"] = pd.to_numeric(presiones.get("positionX", pd.Series(dtype=float)), errors="coerce")
+    presiones["positionY"] = pd.to_numeric(presiones.get("positionY", pd.Series(dtype=float)), errors="coerce")
+
+    # Asegurar columna de fecha (parse robusto: soporta sufijo 'Z' y entradas inconsistentes)
+    if 'DtGame' in presiones.columns:
+        presiones['fecha'] = pd.to_datetime(presiones['DtGame'], errors='coerce').dt.date
+    elif 'fecha' in presiones.columns:
+        s = presiones['fecha'].astype(str).str.replace('Z$', '', regex=True)
+        tmp = pd.to_datetime(s, errors='coerce')
+        presiones['fecha'] = tmp.dt.date
+
+    # Añadir nombres de equipo
+    presiones = presiones.merge(team_ids, left_on="teamId", right_on="homeTeamId", how="left").drop(columns=["homeTeamId"])
+    if 'equipo vs' in presiones.columns:
+        presiones = presiones.merge(team_ids, left_on='equipo vs', right_on='homeTeamId', suffixes=['', '_vs']).rename(columns={'homeTeamName_vs': 'equipo_vs_name'}).drop(columns=['homeTeamId'])
+    else:
+        presiones['equipo_vs_name'] = presiones.get('homeTeamName', None)
+
+    presiones['estado_partido'] = np.where(
+            presiones['estado partdo'] == 'Gana Visita',
+            'Gana_' + presiones['equipo_vs_name'],
+            np.where(
+                presiones['estado partdo'] == 'Gana Local',
+                'Gana_' + presiones['homeTeamName'],
+                'Empate'
+            )
+        )
+
+    return presiones
