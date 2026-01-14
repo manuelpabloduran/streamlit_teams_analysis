@@ -42,7 +42,7 @@ def parse_tercio(posx, tercios):
 
 @st.cache_data
 def load_and_preprocess_data():
-    df = pd.read_csv('laliga2_10-1-26.csv')
+    df = pd.read_csv('goal_kicks.csv')
     saques_arco = df[df.qualifiers.str.contains('GoalKick') == True]
     saques_arco['DtGame'] = saques_arco['__archivo_origen'].apply(lambda x: x.split(' ')[0])
     team_ids = pd.read_json('team_ids.json')
