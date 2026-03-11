@@ -29,7 +29,7 @@ st.title('Análisis Defensivo')
 # --- Carga y Preparación de Datos ---
 @st.cache_data
 def load_and_preprocess_data():
-    df = pd.read_csv('possessions_with_shots.csv')
+    df = pd.read_csv('preprocessed_SSD_25-26.csv')
     df = preprocess_data(df)
     return df
 
@@ -50,6 +50,11 @@ with st.expander("Filtros y Estadísticas", expanded=True):
     if len(date_range) == 2:
         start_date, end_date = date_range
         df = df[(df['DtGame'] >= start_date) & (df['DtGame'] <= end_date)]
+
+    shot_possessions_only = st.checkbox('Filtrar solamente posesiones con tiro')
+    if shot_possessions_only:
+        shot_poss_keys = df.loc[df['xg'].notna(), 'Posesion_key'].unique()
+        df = df[df['Posesion_key'].isin(shot_poss_keys)]
 
     col1, col2, col3 = st.columns([2, 2, 2])
     
@@ -110,12 +115,12 @@ if play_type_display != "Todos":
     if not original_values_to_filter:
         original_values_to_filter = [play_type_display]
 
-    play_type_posesiones = df_page_filtered[df_page_filtered['play_type'].isin(original_values_to_filter)]['Posesion'].unique()
-    df_page_filtered = df_page_filtered[df_page_filtered['Posesion'].isin(play_type_posesiones)]
+    play_type_posesiones = df_page_filtered[df_page_filtered['play_type'].isin(original_values_to_filter)]['Posesion_key'].unique()
+    df_page_filtered = df_page_filtered[df_page_filtered['Posesion_key'].isin(play_type_posesiones)]
 
 if goal_only_filter:
-    goal_posesiones = df_page_filtered[df_page_filtered['NaEventType'] == 'Goal']['Posesion'].unique()
-    df_page_filtered = df_page_filtered[df_page_filtered['Posesion'].isin(goal_posesiones)]
+    goal_posesiones = df_page_filtered[df_page_filtered['NaEventType'] == 'Goal']['Posesion_key'].unique()
+    df_page_filtered = df_page_filtered[df_page_filtered['Posesion_key'].isin(goal_posesiones)]
 
 if possession_xg_filter:
     df_page_filtered = df_page_filtered[
@@ -212,7 +217,7 @@ if team_name:
     st.subheader("Disparos Recibidos del Rival")
     
     # Filtrar eventos de tiro para obtener los jugadores disponibles
-    shot_events = ['Goal', 'Attempt Saved', 'Miss', 'Post']
+    shot_events = ['Goal', 'MissedShots', 'SavedShot']
     df_shots_for_filter = df_page_filtered[df_page_filtered['NaEventType'].isin(shot_events)].copy()
     
     # Obtener jugadores únicos que tienen tiros (del rival)
@@ -235,7 +240,7 @@ if team_name:
     st.subheader("Disparos en Pelota Parada Recibidos del Rival")
     
     # Filtrar eventos de tiro en pelota parada para obtener los jugadores disponibles
-    shot_events_set_piece = ['Goal', 'Attempt Saved', 'Miss', 'Post']
+    shot_events_set_piece = ['Goal', 'MissedShots', 'SavedShot']
     df_shots_set_piece = df_page_filtered[
         (df_page_filtered['NaEventType'].isin(shot_events_set_piece)) &
         (df_page_filtered['play_type'].isin(['From_corner', 'Free_kick', 'Set_piece', 'Throw-in_set_piece']))

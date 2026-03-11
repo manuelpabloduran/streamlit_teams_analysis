@@ -12,7 +12,7 @@ st.title('Análisis Ofensivo - Progresiones con Finalización')
 # --- Carga y Preparación de Datos ---
 @st.cache_data
 def load_and_preprocess_data():
-    df = pd.read_csv('possessions_with_shots.csv')
+    df = pd.read_csv('preprocessed_SSD_25-26.csv')
     df = preprocess_data(df)
     return df
 
@@ -32,21 +32,16 @@ def asignar_pasillo(y):
         return 'Pasillo Exterior Izquierdo'
 
 # --- Ordenar eventos cronológicamente dentro de cada posesión ---
-df = df.sort_values(by=['Posesion', 'time_seconds', 'IdFrame'])
+df = df.sort_values(by=['Posesion_key', 'time_seconds', 'IdFrame'])
 
 # --- Cálculo de acciones y segundos previos al final de la posesión ---
 # 1. Acciones previas (conteo inverso de eventos)
-# Se calcula el tamaño de cada grupo de posesión
-group_size = df.groupby('Posesion')['time_seconds'].transform('size')
-# Se numera cada evento dentro de su posesión (de 0 a N-1)
-event_number = df.groupby('Posesion').cumcount()
-# El conteo inverso es tamaño - 1 - numeración
+group_size = df.groupby('Posesion_key')['time_seconds'].transform('size')
+event_number = df.groupby('Posesion_key').cumcount()
 df['acciones_previas'] = group_size - 1 - event_number
 
 # 2. Segundos previos
-# Se obtiene el tiempo del último evento de cada posesión
-last_time_in_possession = df.groupby('Posesion')['time_seconds'].transform('max')
-# Se calcula la diferencia
+last_time_in_possession = df.groupby('Posesion_key')['time_seconds'].transform('max')
 df['segundos_previos'] = last_time_in_possession - df['time_seconds']
 
 
@@ -67,6 +62,11 @@ with st.expander("Filtros y Estadísticas", expanded=True):
         start_date, end_date = date_range
         # Aseguramos que el df se filtre por el rango de fechas
         df = df[(df['DtGame'] >= start_date) & (df['DtGame'] <= end_date)]
+
+    shot_possessions_only = st.checkbox('Filtrar solamente posesiones con tiro')
+    if shot_possessions_only:
+        shot_poss_keys = df.loc[df['xg'].notna(), 'Posesion_key'].unique()
+        df = df[df['Posesion_key'].isin(shot_poss_keys)]
 
     # --- Nuevos filtros de duración y xG de posesión ---
     # Filtrar NAs para obtener rangos correctos
@@ -145,26 +145,26 @@ if player_name != "Todos":
     df_page_filtered = df_page_filtered[df_page_filtered['NaPlayer'] == player_name]
 
 if goal_only_filter:
-    goal_posesiones = df_page_filtered[df_page_filtered['NaEventType'] == 'Goal']['Posesion'].unique()
-    df_page_filtered = df_page_filtered[df_page_filtered['Posesion'].isin(goal_posesiones)]
+    goal_posesiones = df_page_filtered[df_page_filtered['NaEventType'] == 'Goal']['Posesion_key'].unique()
+    df_page_filtered = df_page_filtered[df_page_filtered['Posesion_key'].isin(goal_posesiones)]
 
 if play_type_display != "Todos":
     # Mapeo inverso: encontrar las claves originales para el valor amigable seleccionado
     original_values_to_filter = [k for k, v in play_type_map.items() if v == play_type_display]
-    
+
     # Si no se encuentra en el mapa (porque es un valor original), usarlo directamente
     if not original_values_to_filter:
         original_values_to_filter = [play_type_display]
 
-    play_type_posesiones = df_page_filtered[df_page_filtered['play_type'].isin(original_values_to_filter)]['Posesion'].unique()
-    df_page_filtered = df_page_filtered[df_page_filtered['Posesion'].isin(play_type_posesiones)]
+    play_type_posesiones = df_page_filtered[df_page_filtered['play_type'].isin(original_values_to_filter)]['Posesion_key'].unique()
+    df_page_filtered = df_page_filtered[df_page_filtered['Posesion_key'].isin(play_type_posesiones)]
 
 # --- Cálculo de Estadísticas ---
 st.markdown("---")
 st.subheader("Estadísticas Generales")
 
 # Filtrar eventos de tiro
-shot_events = ['Attempt Saved', 'Miss', 'Post', 'Goal']
+shot_events = ['SavedShot', 'MissedShots', 'Goal']
 df_shots = df_page_filtered[df_page_filtered['NaEventType'].isin(shot_events)].copy()
 
 # Calcular estadísticas
@@ -223,8 +223,8 @@ with dist_col2:
 # --- Inicio del Análisis con el DF ya filtrado ---
 
 # 1. Excluir posesiones con córners
-posesiones_con_corner = df_page_filtered[df_page_filtered['corner_taken'].notna()]['Posesion'].unique()
-df_sin_corners = df_page_filtered[~df_page_filtered['Posesion'].isin(posesiones_con_corner)]
+posesiones_con_corner = df_page_filtered[df_page_filtered['corner_taken'].notna()]['Posesion_key'].unique()
+df_sin_corners = df_page_filtered[~df_page_filtered['Posesion_key'].isin(posesiones_con_corner)]
 
 # 2. Filtrar por eventos deseados y en campo rival
 eventos_deseados = [
@@ -241,7 +241,7 @@ df_filtrado['pasillo'] = df_filtrado['y'].apply(asignar_pasillo)
 df_filtrado = df_filtrado.sort_values(by=['Posesion', 'time_seconds'])
 
 # 4. Calcular estadísticas
-grouped = df_filtrado.groupby('Posesion')
+grouped = df_filtrado.groupby('Posesion_key')
 inicio_events = grouped.first()
 fin_events = grouped.last()
 
@@ -331,7 +331,7 @@ if team_name:
     st.subheader("Disparos del equipo")
     
     # Filtrar eventos de tiro para obtener los jugadores disponibles
-    shot_events = ['Goal', 'Attempt Saved', 'Miss', 'Post']
+    shot_events = ['Goal', 'MissedShots', 'SavedShot']
     df_shots_for_filter = df_page_filtered[df_page_filtered['NaEventType'].isin(shot_events)].copy()
     
     # Obtener jugadores únicos que tienen tiros
@@ -354,7 +354,7 @@ if team_name:
     st.subheader("Disparos en Pelota Parada")
     
     # Filtrar eventos de tiro en pelota parada para obtener los jugadores disponibles
-    shot_events_set_piece = ['Goal', 'Attempt Saved', 'Miss', 'Post']
+    shot_events_set_piece = ['Goal', 'MissedShots', 'SavedShot']
     df_shots_set_piece = df_page_filtered[
         (df_page_filtered['NaEventType'].isin(shot_events_set_piece)) &
         (df_page_filtered['play_type'].isin(['From_corner', 'Free_kick', 'Set_piece', 'Throw-in_set_piece']))
@@ -380,34 +380,36 @@ if team_name:
     st.header("Progresiones")
 
     # --- Filtro de acciones progresivas ---
+    # Usamos df_progressive_filtered para no mutar df_page_filtered, que se usa en plots posteriores
+    df_progressive_filtered = df_page_filtered.copy()
     progressive_only_filter = st.checkbox('Solo acciones progresivas')
     if progressive_only_filter:
-        df_page_filtered = df_page_filtered[df_page_filtered['end_x'] >= (df_page_filtered['x'] + 5)]
+        df_progressive_filtered = df_progressive_filtered[df_progressive_filtered['end_x'] >= (df_progressive_filtered['x'] + 5)]
 
     # --- Filtros de acciones y segundos previos ---
     prog_col1, prog_col2 = st.columns(2)
     with prog_col1:
         # Asegurarse de que la columna existe y no está vacía antes de calcular el máximo
-        if 'acciones_previas' in df_page_filtered.columns and not df_page_filtered['acciones_previas'].empty:
-            max_actions = int(df_page_filtered['acciones_previas'].max())
+        if 'acciones_previas' in df_progressive_filtered.columns and not df_progressive_filtered['acciones_previas'].empty:
+            max_actions = int(df_progressive_filtered['acciones_previas'].max())
             if max_actions > 0:
                 selected_actions = st.slider(
                     "Filtrar por Acciones Previas (0 = última acción)",
                     0, max_actions, (0, max_actions)
                 )
-                df_page_filtered = df_page_filtered[df_page_filtered['acciones_previas'].between(selected_actions[0], selected_actions[1])]
+                df_progressive_filtered = df_progressive_filtered[df_progressive_filtered['acciones_previas'].between(selected_actions[0], selected_actions[1])]
 
     with prog_col2:
         # Asegurarse de que la columna existe y no está vacía
-        if 'segundos_previos' in df_page_filtered.columns and not df_page_filtered['segundos_previos'].empty:
-            max_seconds = float(df_page_filtered['segundos_previos'].max())
+        if 'segundos_previos' in df_progressive_filtered.columns and not df_progressive_filtered['segundos_previos'].empty:
+            max_seconds = float(df_progressive_filtered['segundos_previos'].max())
             if max_seconds > 0:
                 selected_seconds = st.slider(
                     "Filtrar por Segundos Previos",
                     0.0, 20.0, (0.0, 20.0),
                     format="%.1f"
                 )
-                df_page_filtered = df_page_filtered[df_page_filtered['segundos_previos'].between(selected_seconds[0], selected_seconds[1])]
+                df_progressive_filtered = df_progressive_filtered[df_progressive_filtered['segundos_previos'].between(selected_seconds[0], selected_seconds[1])]
 
 
     # --- Indicadores para el eje X (Profundidad) ---
@@ -453,7 +455,7 @@ if team_name:
 
     with col_matrix1:
         st.subheader("Matriz de Pases")
-        fig_pass_matrix = plot_pass_matrix(df_page_filtered, team_name, x_range=x_range_pass, y_range=y_range_pass)
+        fig_pass_matrix = plot_pass_matrix(df_progressive_filtered, team_name, x_range=x_range_pass, y_range=y_range_pass)
         if fig_pass_matrix:
             st.pyplot(fig_pass_matrix, use_container_width=True)
         else:
@@ -461,7 +463,7 @@ if team_name:
 
     with col_matrix2:
         st.subheader("xG Chain")
-        fig_pass_xg_matrix = plot_pass_xg_matrix(df_page_filtered, team_name, x_range=x_range_pass, y_range=y_range_pass)
+        fig_pass_xg_matrix = plot_pass_xg_matrix(df_progressive_filtered, team_name, x_range=x_range_pass, y_range=y_range_pass)
         if fig_pass_xg_matrix:
             st.pyplot(fig_pass_xg_matrix, use_container_width=True)
         else:
@@ -538,8 +540,8 @@ if team_name:
         df_progression_analysis = df[df['TeamName'] == team_name]
         
         # 1. Excluir posesiones con córners
-        prog_posesiones_con_corner = df_progression_analysis[df_progression_analysis['corner_taken'].notna()]['Posesion'].unique()
-        prog_df_sin_corners = df_progression_analysis[~df_progression_analysis['Posesion'].isin(prog_posesiones_con_corner)]
+        prog_posesiones_con_corner = df_progression_analysis[df_progression_analysis['corner_taken'].notna()]['Posesion_key'].unique()
+        prog_df_sin_corners = df_progression_analysis[~df_progression_analysis['Posesion_key'].isin(prog_posesiones_con_corner)]
 
         # 2. Filtrar por eventos deseados y en campo rival
         prog_df_filtrado = prog_df_sin_corners[
@@ -549,10 +551,10 @@ if team_name:
 
         # 3. Asignar pasillos y ordenar eventos
         prog_df_filtrado['pasillo'] = prog_df_filtrado['y'].apply(asignar_pasillo)
-        prog_df_filtrado = prog_df_filtrado.sort_values(by=['Posesion', 'time_seconds'])
+        prog_df_filtrado = prog_df_filtrado.sort_values(by=['Posesion_key', 'time_seconds'])
 
         # 4. Calcular estadísticas
-        prog_grouped = prog_df_filtrado.groupby('Posesion')
+        prog_grouped = prog_df_filtrado.groupby('Posesion_key')
         prog_inicio_events = prog_grouped.first()
         prog_fin_events = prog_grouped.last()
 

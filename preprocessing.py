@@ -3,6 +3,124 @@ import numpy as np
 import json
 import ast
 
+
+# Mapeo de columnas del nuevo CSV (preprocessed_SSD_25-26) al formato interno
+_COLUMN_RENAME_MAP = {
+    'event_name':         'NaEventType',
+    'jugador':            'NaPlayer',
+    'fecha':              'DtGame',
+    'endX':               'end_x',
+    'endY':               'end_y',
+    'xG':                 'xg',
+    'xGoT':               'xgot',
+    'TeamRival':          'RivalName',
+    'outcome_value':      'Outcome',
+    'id':                 'IdFrame',
+    'goalMouthY':         'Goal_mouth_y_co-ordinate',
+    'goalMouthZ':         'Goal_mouth_z_co-ordinate',
+    'receiver_playerName':'receiving_player',
+}
+
+# Columnas derivadas de qualifiers que no están en el nuevo CSV;
+# se agregan como NaN para que el código no rompa.
+_STUB_COLUMNS = [
+    'NaHomeTeam', 'NaAwayTeam', 'IdHomeTeam', 'IdAwayTeam', 'IdTeam',
+    'Regular_play', 'counterpress_5s_flag', 'long_ball', 'chipped',
+    'corner_taken', 'in_swinger', 'out_swing', 'cross',
+    'Set_piece', 'blocked', 'through_ball', 'lay_off',
+    'Free_kick', 'head_info', '1_on_1', 'First_Touch', 'Individual_Play',
+    'Panenka', 'Deflection', 'throw_in',
+]
+
+# Diccionarios para derivar columnas de tiro desde qualifiers.
+# Las claves son los displayName reales del formato Opta (CamelCase).
+# Los valores mantienen el formato del CSV original para que todo el código
+# downstream (filtros de página, plot_set_piece_shots, plot_goals_sunburst) siga funcionando.
+_PLAY_TYPE_MAP = {
+    "RegularPlay":     "Regular_play",
+    "SetPiece":        "Set_piece",
+    "Penalty":         "Penalty",
+    "FastBreak":       "Fast_break",
+    "FromCorner":      "From_corner",
+    "ThrowinSetPiece": "Throw-in_set_piece",
+}
+
+# Orden importa: SmallBox y OutOfBox deben ir antes de Box
+# para que el substring match no sea ambiguo.
+_SHOT_LOCATION_MAP = {
+    "SmallBox":  "Small_box",
+    "SixYard":   "Small_box",
+    "OutOfBox":  "Out_of_box",
+    "Box":       "Box",
+}
+
+_SHOT_PART_MAP = {
+    "RightFoot":     "Right_footed",
+    "LeftFoot":      "Left_footed",
+    "Head":          "Head",
+    "OtherBodyPart": "Other Body Part",
+}
+
+
+def _map_from_qualifiers(qualifiers_text, mapping):
+    """
+    Dado el texto de la columna qualifiers y un diccionario de mapeo,
+    retorna el primer valor cuya clave aparece como substring en el texto.
+    Si no hay match, retorna None.
+    """
+    if pd.isna(qualifiers_text):
+        return None
+    text = str(qualifiers_text)
+    for key, value in mapping.items():
+        if key in text:
+            return value
+    return None
+
+
+def normalize_columns(df):
+    """
+    Normaliza las columnas del nuevo CSV (preprocessed_SSD_25-26) al formato
+    que espera el resto de la app. Renombra columnas y agrega stubs para las
+    que no existen en el nuevo archivo.
+    """
+    df = df.copy()
+
+    # 1. Renombrar columnas presentes
+    rename = {k: v for k, v in _COLUMN_RENAME_MAP.items() if k in df.columns}
+    df = df.rename(columns=rename)
+
+    # 2. Convertir isOwnGoal (bool) al formato antiguo: True → -1, False/NaN → NaN
+    if 'isOwnGoal' in df.columns:
+        df['own_goal'] = df['isOwnGoal'].apply(lambda x: -1 if x is True or x == True else np.nan)
+    elif 'own_goal' not in df.columns:
+        df['own_goal'] = np.nan
+
+    # 3. Agregar columnas faltantes como NaN
+    for col in _STUB_COLUMNS:
+        if col not in df.columns:
+            df[col] = np.nan
+
+    # 4. Derivar play_type, shot_location y shot_part desde qualifiers
+    #    solo para filas donde xg no es nulo (eventos de tiro)
+    shot_mask = df['xg'].notna()
+    for col, mapping in [
+        ('play_type',     _PLAY_TYPE_MAP),
+        ('shot_location', _SHOT_LOCATION_MAP),
+        ('shot_part',     _SHOT_PART_MAP),
+    ]:
+        df[col] = None
+        if shot_mask.any() and 'qualifiers' in df.columns:
+            df.loc[shot_mask, col] = df.loc[shot_mask, 'qualifiers'].apply(
+                lambda q: _map_from_qualifiers(q, mapping)
+            )
+
+    df['cross'] = np.where(df['qualifiers'].str.contains('Cross'), -1, np.nan)
+
+    # Clave única de posesión por partido (Posesion se repite entre partidos)
+    df['Posesion_key'] = df['matchId'].astype(str) + '_' + df['Posesion'].astype(str)
+
+    return df
+
 def refine_set_pieces(df):
     """
     Refina el 'possession_type' para jugadas a balón parado basándose en reglas específicas.
@@ -10,14 +128,14 @@ def refine_set_pieces(df):
     # Obtener las posesiones que no fueron categorizadas por la lógica de juego regular.
     df = df.copy()
     uncategorized_mask = df['possession_type'].isna()
-    uncategorized_possessions = df[uncategorized_mask]['Posesion'].unique()
+    uncategorized_possessions = df[uncategorized_mask]['Posesion_key'].unique()
     print(len(uncategorized_possessions))
 
-    # Creamos un diccionario para mapear Posesion -> nuevo_tipo
+    # Creamos un diccionario para mapear Posesion_key -> nuevo_tipo
     new_types_map = {}
 
-    # Agrupamos el dataframe original por 'Posesion' una sola vez para eficiencia
-    grouped_df = df.sort_values(by=['Posesion', 'time_seconds', 'IdFrame']).groupby('Posesion')
+    # Agrupamos el dataframe original por 'Posesion_key' una sola vez para eficiencia
+    grouped_df = df.sort_values(by=['Posesion_key', 'time_seconds', 'IdFrame']).groupby('Posesion_key')
 
     for poss_id in uncategorized_possessions:
         possession_group = grouped_df.get_group(poss_id)
@@ -78,8 +196,9 @@ def refine_set_pieces(df):
         new_types_map[poss_id] = new_type
 
     # Solo sobrescribimos donde antes estaba NaN
+    df['possession_type'] = df['possession_type'].astype(object)
     df.loc[uncategorized_mask, 'possession_type'] = (
-        df.loc[uncategorized_mask, 'Posesion'].map(new_types_map)
+        df.loc[uncategorized_mask, 'Posesion_key'].map(new_types_map)
     )
     
     return df
@@ -91,21 +210,22 @@ def preprocess_data(df):
     """
     # --- Inicio del Pipeline ---
 
-    # Copia para evitar SettingWithCopyWarning
-    df = df.copy()
+    # Normalizar columnas del nuevo CSV al formato interno
+    df = normalize_columns(df)
 
-    # Corrección de goles en propia puerta
+    # Corrección de goles en propia puerta (solo si hay datos de equipos local/visitante)
     own_goal_condition = (df['NaEventType'] == 'Goal') & (df['own_goal'].notna())
-    df['TeamName'] = np.where(
-        own_goal_condition,
-        np.where(df['TeamName'] == df['NaHomeTeam'], df['NaAwayTeam'], df['NaHomeTeam']),
-        df['TeamName']
-    )
-    df['IdTeam'] = np.where(
-        own_goal_condition,
-        np.where(df['IdTeam'] == df['IdHomeTeam'], df['IdAwayTeam'], df['IdHomeTeam']),
-        df['IdTeam']
-    )
+    if df['NaHomeTeam'].notna().any():
+        df['TeamName'] = np.where(
+            own_goal_condition,
+            np.where(df['TeamName'] == df['NaHomeTeam'], df['NaAwayTeam'], df['NaHomeTeam']),
+            df['TeamName']
+        )
+        df['IdTeam'] = np.where(
+            own_goal_condition,
+            np.where(df['IdTeam'] == df['IdHomeTeam'], df['IdAwayTeam'], df['IdHomeTeam']),
+            df['IdTeam']
+        )
 
     # --- Cálculo de variables adicionales (a nivel de evento) ---
     df['dx'] = df['end_x'] - df['x']
@@ -113,13 +233,27 @@ def preprocess_data(df):
     df['Angle'] = np.arctan2(df['dy'], df['dx']).mod(2 * np.pi)
 
     # --- Cálculo de variables adicionales (a nivel de posesión) ---
-    possession_duration = df.groupby('Posesion')['time_seconds'].transform(lambda x: x.max() - x.min())
-    possession_counts = df.groupby('Posesion')['time_seconds'].transform('count')
+    possession_duration = df.groupby('Posesion_key')['time_seconds'].transform(lambda x: x.max() - x.min())
+    possession_counts = df.groupby('Posesion_key')['time_seconds'].transform('count')
     df['possession_duration'] = possession_duration.where(possession_counts > 1, np.nan)
     df['possession_duration'] = df['possession_duration'].clip(upper=100)
+    print(df['possession_duration'])
+    print(df['possession_duration'].describe())
 
-    df['possession_xg'] = df.groupby('Posesion')['xg'].transform('sum')
+
+    # Limitar possession_duration a posesiones con tiro (comportamiento original:
+    # el CSV anterior solo contenía posesiones con tiro, por lo que la distribución
+    # solo reflejaba esas posesiones).
+    shot_events_set = {'Goal', 'MissedShots', 'SavedShot'}
+    shot_possession_keys = set(
+        df.loc[df['NaEventType'].isin(shot_events_set), 'Posesion_key'].unique()
+    )
+    df.loc[~df['Posesion_key'].isin(shot_possession_keys), 'possession_duration'] = np.nan
+
+    df['possession_xg'] = df.groupby('Posesion_key')['xg'].transform('sum')
     df['possession_xg'] = df['possession_xg'].clip(upper=1)
+    print(df['possession_xg'])
+    print(df['possession_xg'].describe())
 
     df['iniciacion_area'] = np.where(((df["x"] >= 84) & (df["y"] <= 81) & (df["y"] >= 19)), 1, 0)
     df['finalizacion_area'] = np.where(((df["end_x"] >= 84) & (df["end_y"] <= 81) & (df["end_y"] >= 19)), 1, 0)
@@ -128,21 +262,24 @@ def preprocess_data(df):
     df['cutback'] = np.where(((df["NaEventType"]=="Pass") & (df["finalizacion_area"]==1) & (df["x"]>80) & (df["y"]<=37) & (df["Angle"]>1.57) & (df["Angle"]<3.14)) | ((df["NaEventType"]=="Pass") & (df["finalizacion_area"]==1) & (df["chipped"].isna()) & (df["Outcome"]==1) & (df["x"]>80) & (df["y"]>=63) & (df["Angle"]>3.14) & (df["Angle"]<4.71)), 1, 0)
     df['dividido'] = np.where(((df["NaEventType"]=="Pass") & (df["finalizacion_area"]==1) & (df["x"]>80) & (df["y"]<=37) & (df["Angle"]>0) & (df["Angle"]<1.57)) | ((df["NaEventType"]=="Pass") & (df["finalizacion_area"]==1) & (df["chipped"].isna()) & (df["Outcome"]==1) & (df["x"]>80) & (df["y"]>=63) & (df["Angle"]>4.71) & (df["Angle"]<6.28)), 1, 0)
 
-    df['DtGame'] = pd.to_datetime(df['DtGame']).dt.date
+    df['DtGame'] = pd.to_datetime(
+        df['DtGame'].astype(str).str.replace('Z$', '', regex=True),
+        errors='coerce'
+    ).dt.date
 
     # 1. Filtrar para quedarse con todas las filas de los grupos que tienen un evento de remate
-    shot_events = ['Goal', 'Attempt Saved', 'Miss', 'Post']
-    df_shots_filtered = df.groupby(['TeamName', 'Posesion']).filter(lambda g: g['NaEventType'].isin(shot_events).any()).copy()
+    shot_events = ['Goal', 'MissedShots', 'SavedShot']
+    df_shots_filtered = df.groupby(['TeamName', 'Posesion_key']).filter(lambda g: g['NaEventType'].isin(shot_events).any()).copy()
 
     # 2. Filtrar por posesiones con al menos un evento de juego regular
-    posesiones_regulares = df_shots_filtered[df_shots_filtered['Regular_play'] == 1]['Posesion'].unique()
-    df_filtered = df_shots_filtered[df_shots_filtered['Posesion'].isin(posesiones_regulares)].copy()
+    posesiones_regulares = df_shots_filtered[df_shots_filtered['Regular_play'] == 1]['Posesion_key'].unique()
+    df_filtered = df_shots_filtered[df_shots_filtered['Posesion_key'].isin(posesiones_regulares)].copy()
 
     df_filtered = df_filtered.sort_values(by=['time_seconds', 'IdFrame'])
     is_pass = (df_filtered['NaEventType'] == 'Pass') & (df_filtered['long_ball'] != -1) & (df_filtered['chipped'] != -1)
 
     # 3. Calcular métricas para juego regular
-    possession_metrics = df_filtered.groupby(['Posesion']).agg(
+    possession_metrics = df_filtered.groupby(['Posesion_key']).agg(
         total_time=('time_seconds', lambda x: x.max() - x.min()),
         total_actions=('x', 'count'),
         actions_x_le_20=('x', lambda x: (x <= 20).sum()),
@@ -172,7 +309,7 @@ def preprocess_data(df):
     possession_metrics['possession_type'] = possession_metrics.apply(categorize_possession, axis=1)
 
     # 5. Asignar las categorías de juego regular al DataFrame final
-    df_final = pd.merge(df, possession_metrics[['Posesion', 'possession_type']], on='Posesion', how='left')
+    df_final = pd.merge(df, possession_metrics[['Posesion_key', 'possession_type']], on='Posesion_key', how='left')
 
     # 6. Refinar las categorías para jugadas a balón parado
     df_final = refine_set_pieces(df_final)
@@ -251,20 +388,33 @@ def add_pressures(df):
         presiones['fecha'] = tmp.dt.date
 
     # Añadir nombres de equipo
-    presiones = presiones.merge(team_ids, left_on="teamId", right_on="homeTeamId", how="left").drop(columns=["homeTeamId"])
-    if 'equipo vs' in presiones.columns:
-        presiones = presiones.merge(team_ids, left_on='equipo vs', right_on='homeTeamId', suffixes=['', '_vs']).rename(columns={'homeTeamName_vs': 'equipo_vs_name'}).drop(columns=['homeTeamId'])
+    # Si el nuevo CSV ya trae TeamName y TeamRival, usamos esas directamente
+    if 'TeamName' in presiones.columns and 'homeTeamName' not in presiones.columns:
+        presiones['homeTeamName'] = presiones['TeamName']
+    else:
+        presiones = presiones.merge(team_ids, left_on="teamId", right_on="homeTeamId", how="left").drop(columns=["homeTeamId"])
+
+    if 'TeamRival' in presiones.columns and 'equipo_vs_name' not in presiones.columns:
+        presiones['equipo_vs_name'] = presiones['TeamRival']
+    elif 'equipo vs' in presiones.columns:
+        presiones = presiones.merge(team_ids, left_on='equipo vs', right_on='homeTeamId', suffixes=['', '_vs']).rename(columns={'homeTeamName_vs': 'equipo_vs_name'}).drop(columns=["homeTeamId"])
     else:
         presiones['equipo_vs_name'] = presiones.get('homeTeamName', None)
 
-    presiones['estado_partido'] = np.where(
-            presiones['estado partdo'] == 'Gana Visita',
-            'Gana_' + presiones['equipo_vs_name'],
-            np.where(
-                presiones['estado partdo'] == 'Gana Local',
-                'Gana_' + presiones['homeTeamName'],
-                'Empate'
+    # Calcular estado del partido si no viene ya calculado
+    if 'estado_partido' not in presiones.columns:
+        estado_col = 'estado partdo' if 'estado partdo' in presiones.columns else None
+        if estado_col:
+            presiones['estado_partido'] = np.where(
+                presiones[estado_col] == 'Gana Visita',
+                'Gana_' + presiones['equipo_vs_name'],
+                np.where(
+                    presiones[estado_col] == 'Gana Local',
+                    'Gana_' + presiones['homeTeamName'],
+                    'Empate'
+                )
             )
-        )
+        else:
+            presiones['estado_partido'] = 'Empate'
 
     return presiones

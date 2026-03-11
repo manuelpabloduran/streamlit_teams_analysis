@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from utils.plots import plot_xg_scatter, plot_xgot_scatter
+from preprocessing import normalize_columns
 
 st.set_page_config(layout="wide")
 
@@ -10,9 +11,10 @@ st.title('Análisis de Posesiones y Tiros')
 @st.cache_data
 def load_data(url):
     df = pd.read_csv(url)
+    df = normalize_columns(df)
     return df
 
-df = load_data('possessions_with_shots.csv')
+df = load_data('preprocessed_SSD_25-26.csv')
 
 st.header('Análisis de Expected Goals (xG) y Expected Goals on Target (xGOT)')
 
