@@ -129,7 +129,6 @@ def refine_set_pieces(df):
     df = df.copy()
     uncategorized_mask = df['possession_type'].isna()
     uncategorized_possessions = df[uncategorized_mask]['Posesion_key'].unique()
-    print(len(uncategorized_possessions))
 
     # Creamos un diccionario para mapear Posesion_key -> nuevo_tipo
     new_types_map = {}
@@ -237,8 +236,6 @@ def preprocess_data(df):
     possession_counts = df.groupby('Posesion_key')['time_seconds'].transform('count')
     df['possession_duration'] = possession_duration.where(possession_counts > 1, np.nan)
     df['possession_duration'] = df['possession_duration'].clip(upper=100)
-    print(df['possession_duration'])
-    print(df['possession_duration'].describe())
 
 
     # Limitar possession_duration a posesiones con tiro (comportamiento original:
@@ -252,8 +249,6 @@ def preprocess_data(df):
 
     df['possession_xg'] = df.groupby('Posesion_key')['xg'].transform('sum')
     df['possession_xg'] = df['possession_xg'].clip(upper=1)
-    print(df['possession_xg'])
-    print(df['possession_xg'].describe())
 
     df['iniciacion_area'] = np.where(((df["x"] >= 84) & (df["y"] <= 81) & (df["y"] >= 19)), 1, 0)
     df['finalizacion_area'] = np.where(((df["end_x"] >= 84) & (df["end_y"] <= 81) & (df["end_y"] >= 19)), 1, 0)
