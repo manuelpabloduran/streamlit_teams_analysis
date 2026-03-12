@@ -12,7 +12,7 @@ st.title('Análisis Ofensivo - Progresiones con Finalización')
 # --- Carga y Preparación de Datos ---
 @st.cache_data
 def load_and_preprocess_data():
-    df = pd.read_csv('preprocessed_SSD_25-26.csv')
+    df = pd.read_parquet('preprocessed_SSD_25-26.parquet')
     df = preprocess_data(df)
     return df
 

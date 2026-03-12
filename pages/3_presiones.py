@@ -45,7 +45,7 @@ def parse_tercio(posx, tercios):
 
 @st.cache_data
 def load_and_preprocess_data():
-    df = pd.read_csv('preprocessed_SSD_25-26.csv')
+    df = pd.read_parquet('preprocessed_SSD_25-26.parquet')
     df = add_pressures(df)
     if 'fecha' not in df.columns and 'DtGame' in df.columns:
         df['fecha'] = pd.to_datetime(df['DtGame']).dt.date

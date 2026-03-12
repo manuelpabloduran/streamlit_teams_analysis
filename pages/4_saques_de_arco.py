@@ -34,7 +34,7 @@ def parse_minute_ranges(series, ranges):
 
 @st.cache_data
 def load_data():
-    df = pd.read_csv('preprocessed_SSD_25-26.csv')
+    df = pd.read_parquet('preprocessed_SSD_25-26.parquet')
     df = preprocess_data(df)
     # DtGame ya es date tras preprocess_data; Posesion_key ya existe tras normalize_columns
     return df
