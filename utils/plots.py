@@ -300,7 +300,7 @@ def plot_team_progression_with_hist(df_analisis_progreso, team_name, conteo_inic
     return fig
 
 
-def plot_pressure_kde(df, filter_col=None, team_name=None, cmap='OrRd', levels=100, fill=True, bandwidth=None, scatter_on_fail=True, show_zones=True, facecolor="#EFE9E6", zone_color="#ab2a3e", title_suffix=''):
+def plot_pressure_kde(df, filter_col=None, team_name=None, cmap='OrRd', levels=100, fill=True, bandwidth=None, scatter_on_fail=True, show_zones=True, facecolor="#EFE9E6", zone_color="#ab2a3e", title_suffix='', title_label="Mapa de Presiones"):
     """
     Plotea un mapa de densidad (KDE) de las posiciones de presión usando mplsoccer.Pitch.
 
@@ -424,7 +424,7 @@ def plot_pressure_kde(df, filter_col=None, team_name=None, cmap='OrRd', levels=1
                         text_.set_path_effects([pe.Stroke(linewidth=1.5, foreground=fore_color), pe.Normal()])
 
     # Title
-    title = "Mapa de Presiones"
+    title = title_label
     if team_name:
         title += f" - {team_name}"
     if title_suffix:
@@ -548,14 +548,19 @@ def highlight_team_scatter(scatter_df, team_choice):
     return fig
 
 def plot_goal_kicks(saques_arco, team_name, facecolor="#EFE9E6"):
+    team_col = 'TeamName' if 'TeamName' in saques_arco.columns else 'homeTeamName'
 
-    saques_arco['zone_area'] = [assign_shot_zone_press(x,y) for x,y in zip(saques_arco['endX'], saques_arco['endY'])]
-    data = saques_arco.groupby(['homeTeamName', 'zone_area']).apply(lambda x: x.shape[0]).reset_index()
+    saques_arco = saques_arco.copy()
+    # Soporta tanto columnas normalizadas (end_x/end_y) como originales (endX/endY)
+    end_x_col = 'end_x' if 'end_x' in saques_arco.columns else 'endX'
+    end_y_col = 'end_y' if 'end_y' in saques_arco.columns else 'endY'
+    saques_arco['zone_area'] = [assign_shot_zone_press(x, y) for x, y in zip(saques_arco[end_x_col], saques_arco[end_y_col])]
+    data = saques_arco.groupby([team_col, 'zone_area']).apply(lambda x: x.shape[0]).reset_index()
     data.rename(columns={0:'num_shots'}, inplace=True)
-    total_shots = data.groupby(['homeTeamName'])['num_shots'].sum().reset_index()
+    total_shots = data.groupby([team_col])['num_shots'].sum().reset_index()
     total_shots.rename(columns={'num_shots':'total_shots'}, inplace=True)
 
-    data = pd.merge(data, total_shots, on='homeTeamName', how='left')
+    data = pd.merge(data, total_shots, on=team_col, how='left')
     data['pct_shots'] = data['num_shots']/data['total_shots']
 
     pitch = Pitch(pitch_type='opta')
@@ -578,14 +583,12 @@ def plot_goal_kicks(saques_arco, team_name, facecolor="#EFE9E6"):
         plot_df = data.groupby('zone_area').agg({'num_shots':'sum','total_shots':'sum'}).reset_index()
         plot_df['pct_shots'] = plot_df['num_shots'] / plot_df['total_shots']
     else:
-        plot_df = data[data['homeTeamName'] == team_name].reset_index(drop=True)
+        plot_df = data[data[team_col] == team_name].reset_index(drop=True)
     
     # si no hay datos, devolver None para que la página muestre mensaje apropiado
     if plot_df.empty:
         return None
     
-    print(plot_df)
-
     max_value = plot_df['pct_shots'].max()
     
     for zone in plot_df['zone_area']:
@@ -655,44 +658,45 @@ def plot_goal_kicks_effectiveness(saques_arco, team_name=None):
         team_name = None
 
     # Determinar columna de equipo disponible
-    if 'homeTeamName' in df.columns:
+    if 'TeamName' in df.columns:
+        team_col = 'TeamName'
+    elif 'homeTeamName' in df.columns:
         team_col = 'homeTeamName'
     elif 'teamName' in df.columns:
         team_col = 'teamName'
     else:
-        # no hay columna de equipo
         return None
 
-    # Asegurar columnas necesarias
-    if 'endX' not in df.columns:
+    # Soporta columnas normalizadas (end_x) o crudas (endX)
+    end_x_col = 'end_x' if 'end_x' in df.columns else 'endX'
+    if end_x_col not in df.columns:
         return None
 
-    if 'outcome_value' not in df.columns:
-        # intentar inferir outcome_value a partir de outcome_type (Goal = 1)
-        if 'outcome_type' in df.columns:
-            df['outcome_value'] = np.where(df['outcome_type'] == 'Goal', 1, 0)
-        else:
-            df['outcome_value'] = 0
+    # Soporta Outcome (normalizado) o outcome_value (crudo)
+    outcome_col = 'Outcome' if 'Outcome' in df.columns else 'outcome_value'
+    if outcome_col not in df.columns:
+        df[outcome_col] = 0
 
-    print("teamCol", team_col)
+    # Columna de conteo total
+    count_col = 'n_total' if 'n_total' in df.columns else 'outcome_type'
 
     # Preparar la figura
     fig = px.scatter(
         df,
-        x='endX',
+        x=end_x_col,
         y='% de efectividad',
-        size='outcome_type',
+        size=count_col,
         hover_name=team_col,
         hover_data={
-            'endX': ':.2f',
+            end_x_col: ':.2f',
             '% de efectividad': ':.2f',
-            'outcome_type': True,
+            count_col: True,
             team_col: False
         },
         labels={
-            'endX': 'Distancia promedio de terminación',
+            end_x_col: 'Distancia promedio de terminación',
             '% de efectividad': '% de efectividad',
-            'outcome_type': 'Total saques'
+            count_col: 'Total saques'
         },
         title='Saques de Arco — Distancia vs % de efectividad'
     )
@@ -702,26 +706,23 @@ def plot_goal_kicks_effectiveness(saques_arco, team_name=None):
     # Resaltar equipo si se indica
     if team_name:
         if team_name in df[team_col].values:
-            others = df[df[team_col] != team_name]
             sel = df[df[team_col] == team_name]
-            # atenuar otros
             fig.update_traces(selector=dict(mode='markers'), marker=dict(opacity=0.25))
-            # añadir traza destacada
             fig.add_trace(
                 go.Scatter(
-                    x=sel['endX'],
+                    x=sel[end_x_col],
                     y=sel['% de efectividad'],
                     mode='markers+text',
                     text=team_name,
                     textposition='top center',
-                    marker=dict(size=sel['outcome_type'] / 4, color='red', opacity=0.95, line=dict(width=1, color='black')),
+                    marker=dict(size=sel[count_col] / 4, color='red', opacity=0.95, line=dict(width=1, color='black')),
                     hoverinfo='text'
                 )
             )
     fig.update_xaxes(title_text='Distancia promedio de terminación (m)')
     fig.update_yaxes(title_text='% de efectividad')
 
-    x_ref = df['endX'].mean()
+    x_ref = df[end_x_col].mean()
     y_ref = df['% de efectividad'].mean()
 
     fig.add_vline(
@@ -767,7 +768,7 @@ def plot_offensive_sequences(df_filtrado, team_name, filter_col='TeamName'):
                 res.append(seq_list[i])
         return res
 
-    sequences = df_team.groupby('Posesion')['pasillo'].apply(list)
+    sequences = df_team.groupby('Posesion_key')['pasillo'].apply(list)
     sequences = sequences[sequences.str.len() > 1]
     sequences_cleaned = sequences.apply(remove_consecutive_duplicates)
 
@@ -1307,10 +1308,10 @@ def summarize_goal_possessions(df, team_name, filter_col='TeamName'):
     if df_goals.empty:
         raise ValueError(f"No hay goles para {team_name}")
 
-    goal_possessions = df_goals['Posesion'].unique()
+    goal_possessions = df_goals['Posesion_key'].unique()
 
     # 3) Quedarnos solo con eventos de esas posesiones
-    df_pos_gol = df_team[df_team['Posesion'].isin(goal_possessions)].copy()
+    df_pos_gol = df_team[df_team['Posesion_key'].isin(goal_possessions)].copy()
 
     # 4) Función que marca si la posesión incluye cada acción
     def flag_actions(g):
@@ -1353,7 +1354,7 @@ def summarize_goal_possessions(df, team_name, filter_col='TeamName'):
             ).any(),
         })
 
-    per_pos = df_pos_gol.groupby('Posesion').apply(flag_actions)
+    per_pos = df_pos_gol.groupby('Posesion_key').apply(flag_actions)
 
     # Nos aseguramos de tener booleanos
     per_pos = per_pos.astype(bool)
@@ -1616,12 +1617,12 @@ def plot_xg_actions_bar(df, team_name="Racing de Santander", filter_col='TeamNam
         df_team = df[df[filter_col] == team_name].copy()
 
         # 1b. Posesiones que terminan en TIRO (tienen xg)
-        shot_possessions = df_team.loc[df_team['xg'].notna(), 'Posesion'].unique()
+        shot_possessions = df_team.loc[df_team['xg'].notna(), 'Posesion_key'].unique()
         if len(shot_possessions) == 0:
             raise ValueError(f"No hay posesiones con tiro para {team_name}")
 
         # 1c. Quedarnos solo con eventos de esas posesiones
-        df_pos_shot = df_team[df_team['Posesion'].isin(shot_possessions)].copy()
+        df_pos_shot = df_team[df_team['Posesion_key'].isin(shot_possessions)].copy()
 
         # 1d. Reutilizar la función `flag_actions` de `summarize_goal_possessions`
         #     para no duplicar código.
@@ -1647,14 +1648,14 @@ def plot_xg_actions_bar(df, team_name="Racing de Santander", filter_col='TeamNam
                 "Centro raso": ((g['cross'].notna()) & (g['x'] >= 75) & g['chipped'].isna()).any(),
             })
 
-        per_pos_actions = df_pos_shot.groupby('Posesion').apply(flag_actions).astype(bool)
+        per_pos_actions = df_pos_shot.groupby('Posesion_key').apply(flag_actions).astype(bool)
 
     except ValueError as e:
         st.warning(f"⚠️ {e}")
         return None
 
     # 2. Obtener el xG total por posesión y unirlo a los flags
-    possession_xg = df_pos_shot.groupby('Posesion')['xg'].sum()
+    possession_xg = df_pos_shot.groupby('Posesion_key')['xg'].sum()
     per_pos_actions['possession_xg'] = per_pos_actions.index.map(possession_xg)
 
     # 3. Calcular el xG acumulado por cada tipo de acción
@@ -1813,14 +1814,14 @@ def plot_pass_xg_matrix(df, team_name, filter_col='TeamName', x_range=(0, 100), 
     df_team = df[df[filter_col] == team_name].copy()
     
     # Obtener el xG por posesión (solo las que terminan en tiro)
-    possession_xg = df_team.loc[df_team['xg'].notna()].groupby('Posesion')['xg'].sum()
+    possession_xg = df_team.loc[df_team['xg'].notna()].groupby('Posesion_key')['xg'].sum()
     
     if possession_xg.empty:
         st.warning(f"⚠️ No hay posesiones con xG para {team_name}.")
         return None
 
     # Asignar el xG a cada evento de la posesión correspondiente
-    df_team['possession_xg'] = df_team['Posesion'].map(possession_xg)
+    df_team['possession_xg'] = df_team['Posesion_key'].map(possession_xg)
 
     # 2. Filtrar solo los pases en posesiones con xG
     mask = (
@@ -2456,7 +2457,7 @@ def plot_distribution_comparison(df, team_name, column, title, xaxis_title, filt
     """
     # Usamos el df global que ya está filtrado por fecha, etc.
     # Necesitamos una fila por posesión para no contar la misma duración/xg varias veces.
-    df_poss = df.drop_duplicates(subset=['Posesion']).copy()
+    df_poss = df.drop_duplicates(subset=['Posesion_key']).copy()
     df_poss = df_poss.dropna(subset=[column])
 
     if df_poss.empty:
@@ -2503,6 +2504,8 @@ def plot_area_entry_drives(
     """
     Dibuja las conducciones que suponen un ingreso al área rival para un equipo dado, originadas en campo rival.
     La opacidad de la línea varía según el 'possession_xg'.
+
+    REVISAR PORQUE NO HAY EVENTOS DE BALLDRIVE EN EL PREPROCESSED
     """
     dfp = df.copy()
     dfp = dfp[
@@ -2690,7 +2693,7 @@ zone_areas = {
 }
 
 # Constantes para los gráficos de disparos
-SHOT_EVENTS = ['Goal', 'Attempt Saved', 'Miss', 'Post']
+SHOT_EVENTS = ['Goal', 'MissedShots', 'SavedShot']
 DEFAULT_XG = 0.1
 MIN_PCT_THRESHOLD = 0.001
 HIGH_PCT_THRESHOLD = 0.075
@@ -3052,17 +3055,17 @@ def plot_crosses_analysis(df, team_name=None, filter_col='TeamName'):
             df_filtered = df.copy()
     else:
         df_filtered = df[df[filter_col] == team_name].copy()
-    
+
     # Filtrar centros (cross == '-1' o cross.notna())
     df_centros = df_filtered[
-        (df_filtered['cross'] == '-1') | (df_filtered['cross'].notna())
+        (df_filtered['cross'] == -1) | (df_filtered['cross'].notna())
     ].copy()
     
     if df_centros.empty:
         return None
     
     # Obtener eventos únicos
-    base_df = df_centros.drop_duplicates('IdEvent').copy()
+    base_df = df_centros.drop_duplicates('eventId').copy()
     
     if base_df.empty:
         return None
@@ -3187,6 +3190,101 @@ def plot_crosses_analysis(df, team_name=None, filter_col='TeamName'):
         _draw_zone_delimiter_lines(ax)
         
         ax.set_title(titulo, fontsize=14)
-    
+
     plt.tight_layout()
+    return fig
+
+
+def plot_possession_path(df_possession, facecolor="#EFE9E6"):
+    """
+    Dibuja todos los eventos de una posesión en la cancha con flechas.
+    Los saques de arco se marcan con una estrella, los remates con diamante rojo.
+    """
+    if df_possession is None or df_possession.empty:
+        return None
+
+    df = df_possession.copy().sort_values('time_seconds')
+
+    EVENT_COLORS = {
+        'Pass':        '#1a78cf',
+        'SavedShot':   '#e8290b',
+        'MissedShots': '#e8290b',
+        'Goal':        '#e8290b',
+        'TakeOn':      '#fcb900',
+        'BallTouch':   '#888888',
+        'Tackle':      '#888888',
+        'Interception':'#888888',
+    }
+    SHOT_TYPES = {'SavedShot', 'MissedShots', 'Goal'}
+
+    pitch = Pitch(pitch_type='opta')
+    fig, ax = pitch.draw(figsize=(10, 7))
+    ax.set_facecolor(facecolor)
+
+    # Soporta tanto columnas normalizadas como originales
+    event_col  = 'NaEventType' if 'NaEventType' in df.columns else 'event_name'
+    end_x_col  = 'end_x'       if 'end_x'       in df.columns else 'endX'
+    end_y_col  = 'end_y'       if 'end_y'       in df.columns else 'endY'
+    xg_col     = 'xg'          if 'xg'          in df.columns else 'xG'
+    rival_col  = 'RivalName'   if 'RivalName'   in df.columns else 'TeamRival'
+    date_col   = 'DtGame'      if 'DtGame'      in df.columns else 'fecha'
+
+    for _, row in df.iterrows():
+        event = str(row.get(event_col, ''))
+        qualifiers = str(row.get('qualifiers', ''))
+        is_goal_kick = 'GoalKick' in qualifiers
+        color = EVENT_COLORS.get(event, '#888888')
+
+        x  = pd.to_numeric(row.get('x',       np.nan), errors='coerce')
+        y  = pd.to_numeric(row.get('y',       np.nan), errors='coerce')
+        ex = pd.to_numeric(row.get(end_x_col, np.nan), errors='coerce')
+        ey = pd.to_numeric(row.get(end_y_col, np.nan), errors='coerce')
+
+        if np.isnan(x) or np.isnan(y):
+            continue
+
+        marker = '*' if is_goal_kick else ('D' if event in SHOT_TYPES else 'o')
+        size   = 200 if is_goal_kick else (120 if event in SHOT_TYPES else 60)
+        ax.scatter(x, y, c=color, s=size, marker=marker, zorder=4,
+                   edgecolors='white', linewidths=0.8)
+
+        if not (np.isnan(ex) or np.isnan(ey)):
+            pitch.arrows(x, y, ex, ey, ax=ax, color=color,
+                         width=1.5, headwidth=4, headlength=4, zorder=3, alpha=0.8)
+
+        if event in SHOT_TYPES:
+            xg_val = row.get(xg_col, np.nan)
+            if pd.notna(xg_val):
+                ax.text(x + 1.5, y + 1.5, f"xG: {float(xg_val):.2f}",
+                        fontsize=8, color='#e8290b', zorder=5,
+                        bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=1))
+
+    team   = df['TeamName'].iloc[0]     if 'TeamName' in df.columns else ''
+    rival  = df[rival_col].iloc[0]      if rival_col  in df.columns else ''
+    fecha  = df[date_col].iloc[0]       if date_col   in df.columns else ''
+    minute = df['minute'].iloc[0]       if 'minute'   in df.columns else ''
+    title  = f"{team} vs {rival}  |  {fecha}  |  min {minute}"
+    try:
+        DC_to_FC  = ax.transData.transform
+        FC_to_NFC = fig.transFigure.inverted().transform
+        DC_to_NFC = lambda p: FC_to_NFC(DC_to_FC(p))
+        tx, ty = DC_to_NFC((50, 108))
+        fig.text(tx, ty, title, ha='center', va='center', fontsize=11)
+    except Exception:
+        fig.suptitle(title, fontsize=11)
+
+    legend_elements = [
+        Line2D([0], [0], marker='*', color='w', markerfacecolor='#1a78cf',
+               markersize=12, label='Saque de arco'),
+        Line2D([0], [0], marker='o', color='w', markerfacecolor='#1a78cf',
+               markersize=8,  label='Pase'),
+        Line2D([0], [0], marker='D', color='w', markerfacecolor='#e8290b',
+               markersize=8,  label='Remate'),
+        Line2D([0], [0], marker='o', color='w', markerfacecolor='#888888',
+               markersize=8,  label='Otro'),
+    ]
+    ax.legend(handles=legend_elements, loc='lower right', fontsize=8, framealpha=0.8)
+    ax.set_xlim(0, 105)
+    ax.set_ylim(-5, 113)
+
     return fig
