@@ -10,11 +10,11 @@ st.title('Análisis de Posesiones y Tiros')
 # Cargar datos (con caché para mejorar rendimiento)
 @st.cache_data
 def load_data(url):
-    df = pd.read_csv(url)
+    df = pd.read_parquet(url)
     df = normalize_columns(df)
     return df
 
-df = load_data('preprocessed_SSD_25-26.csv')
+df = load_data('preprocessed_SSD_25-26.parquet')
 
 st.header('Análisis de Expected Goals (xG) y Expected Goals on Target (xGOT)')
 
