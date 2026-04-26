@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 import json
@@ -320,7 +321,8 @@ def add_pressures(df):
     Devuelve un DataFrame con las presiones ya parseadas y columnas útiles
     (`pressure_parsed`, `pressureReceived`, `positionX`, `positionY`, `equipo_vs_name`, `fecha`).
     """
-    team_ids = pd.read_json('team_ids.json')
+    _team_ids_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'team_ids.json')
+    team_ids = pd.read_json(_team_ids_path)
 
     def parse_pressure(x):
         if pd.isna(x):
