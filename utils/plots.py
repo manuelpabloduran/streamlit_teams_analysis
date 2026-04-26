@@ -3294,3 +3294,112 @@ def plot_possession_path(df_possession, facecolor="#EFE9E6"):
     ax.set_ylim(-5, 113)
 
     return fig
+
+
+TERCIO_COLORS = {'Primer tercio': '#E74C3C', 'Tercio medio': '#F1C40F', 'Último tercio': '#2ECC71'}
+TERCIO_ORDER = ['Primer tercio', 'Tercio medio', 'Último tercio']
+
+
+def plot_throw_ins_map(df, team_name=None, facecolor="#EFE9E6"):
+    if df is None or df.empty:
+        return None
+
+    pitch = Pitch(pitch_type='opta')
+    fig, ax = pitch.draw(figsize=(10, 7))
+    ax.set_facecolor(facecolor)
+
+    # Vertical lines for thirds
+    for x_line in [33.5, 66.5]:
+        ax.axvline(x_line, color='black', lw=1.5, ls='--', alpha=0.6, zorder=2)
+
+    teams = df['TeamName'].dropna().unique() if team_name is None else [team_name]
+    palette = px.colors.qualitative.Safe
+    team_color_map = {t: palette[i % len(palette)] for i, t in enumerate(sorted(df['TeamName'].dropna().unique()))}
+
+    plot_df = df if team_name is None else df[df['TeamName'] == team_name]
+    if plot_df.empty:
+        return None
+
+    for t in teams:
+        tdf = plot_df[plot_df['TeamName'] == t] if team_name is None else plot_df
+        color = team_color_map.get(t, '#1a78cf')
+        xs = pd.to_numeric(tdf['x'], errors='coerce').dropna()
+        ys = pd.to_numeric(tdf['y'], errors='coerce').dropna()
+        valid = tdf[['x', 'y']].apply(pd.to_numeric, errors='coerce').dropna()
+        if valid.empty:
+            continue
+        ax.scatter(valid['x'], valid['y'], c=color, s=40, alpha=0.6,
+                   edgecolors='white', linewidths=0.5, zorder=3,
+                   label=t if team_name is None else None)
+
+    if team_name is None:
+        ax.legend(loc='upper right', fontsize=8, framealpha=0.8)
+    else:
+        ax.text(50, 107, team_name, ha='center', va='center', fontsize=14, fontweight='bold')
+
+    return fig
+
+
+def plot_throw_ins_by_tercio(df):
+    if df is None or df.empty:
+        return None, None, None
+
+    required = {'TeamName', 'tercio', 'possession_xg', 'Outcome'}
+    if not required.issubset(df.columns):
+        return None, None, None
+
+    tercio_col = pd.Categorical(df['tercio'], categories=TERCIO_ORDER, ordered=True)
+    df = df.copy()
+    df['tercio'] = tercio_col
+
+    # Count
+    count_df = (
+        df.groupby(['TeamName', 'tercio'], observed=True)
+        .size()
+        .reset_index(name='count')
+    )
+    fig_count = px.bar(
+        count_df, x='TeamName', y='count', color='tercio',
+        barmode='group',
+        color_discrete_map=TERCIO_COLORS,
+        category_orders={'tercio': TERCIO_ORDER},
+        title='Cantidad de laterales por equipo y tercio',
+        labels={'count': 'Cantidad', 'TeamName': 'Equipo', 'tercio': 'Tercio'},
+    )
+    fig_count.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+
+    # xG promedio por posesión
+    xg_df = (
+        df.groupby(['TeamName', 'tercio'], observed=True)['possession_xg']
+        .mean()
+        .reset_index(name='xg_mean')
+    )
+    fig_xg = px.bar(
+        xg_df, x='TeamName', y='xg_mean', color='tercio',
+        barmode='group',
+        color_discrete_map=TERCIO_COLORS,
+        category_orders={'tercio': TERCIO_ORDER},
+        title='xG promedio de posesión por equipo y tercio',
+        labels={'xg_mean': 'xG promedio', 'TeamName': 'Equipo', 'tercio': 'Tercio'},
+    )
+    fig_xg.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+
+    # Efectividad (Outcome == 1)
+    df['completed'] = (pd.to_numeric(df['Outcome'], errors='coerce') == 1).astype(int)
+    ef_df = (
+        df.groupby(['TeamName', 'tercio'], observed=True)['completed']
+        .mean()
+        .mul(100)
+        .reset_index(name='efectividad')
+    )
+    fig_ef = px.bar(
+        ef_df, x='TeamName', y='efectividad', color='tercio',
+        barmode='group',
+        color_discrete_map=TERCIO_COLORS,
+        category_orders={'tercio': TERCIO_ORDER},
+        title='% Laterales completados por equipo y tercio',
+        labels={'efectividad': '% Completados', 'TeamName': 'Equipo', 'tercio': 'Tercio'},
+    )
+    fig_ef.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+
+    return fig_count, fig_xg, fig_ef
