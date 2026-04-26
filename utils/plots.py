@@ -3313,7 +3313,8 @@ def plot_throw_ins_map(df, team_name=None, facecolor="#EFE9E6"):
         ax.axvline(x_line, color='black', lw=1.5, ls='--', alpha=0.6, zorder=2)
 
     teams = df['TeamName'].dropna().unique() if team_name is None else [team_name]
-    palette = px.colors.qualitative.Safe
+    palette = ['#1a78cf', '#e8290b', '#00b050', '#fcb900', '#7b2d8b', '#00b0f0',
+               '#ff6600', '#00b0a0', '#c00000', '#92d050', '#0070c0', '#ffc000']
     team_color_map = {t: palette[i % len(palette)] for i, t in enumerate(sorted(df['TeamName'].dropna().unique()))}
 
     plot_df = df if team_name is None else df[df['TeamName'] == team_name]
