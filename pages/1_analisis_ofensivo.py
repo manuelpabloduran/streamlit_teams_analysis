@@ -1,3 +1,4 @@
+﻿import os
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -12,7 +13,8 @@ st.title('Análisis Ofensivo - Progresiones con Finalización')
 # --- Carga y Preparación de Datos ---
 @st.cache_data
 def load_and_preprocess_data():
-    df = pd.read_parquet('preprocessed_SSD_25-26.parquet')
+    _path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'preprocessed_SSD_25-26.parquet')
+    df = pd.read_parquet(_path)
     df = preprocess_data(df)
     return df
 

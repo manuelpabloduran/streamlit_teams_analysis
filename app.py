@@ -14,7 +14,8 @@ def load_data(url):
     df = normalize_columns(df)
     return df
 
-df = load_data('preprocessed_SSD_25-26.parquet')
+_PARQUET = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'preprocessed_SSD_25-26.parquet')
+df = load_data(_PARQUET)
 
 st.header('Análisis de Expected Goals (xG) y Expected Goals on Target (xGOT)')
 

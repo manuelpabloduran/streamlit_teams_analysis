@@ -1,3 +1,4 @@
+﻿import os
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -45,7 +46,8 @@ def parse_tercio(posx, tercios):
 
 @st.cache_data
 def load_and_preprocess_data():
-    df = pd.read_parquet('preprocessed_SSD_25-26.parquet')
+    _path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'preprocessed_SSD_25-26.parquet')
+    df = pd.read_parquet(_path)
     df = add_pressures(df)
     if 'fecha' not in df.columns and 'DtGame' in df.columns:
         df['fecha'] = pd.to_datetime(df['DtGame']).dt.date

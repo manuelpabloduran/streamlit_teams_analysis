@@ -3229,6 +3229,7 @@ def plot_possession_path(df_possession, facecolor="#EFE9E6"):
     rival_col  = 'RivalName'   if 'RivalName'   in df.columns else 'TeamRival'
     date_col   = 'DtGame'      if 'DtGame'      in df.columns else 'fecha'
 
+    event_num = 0
     for _, row in df.iterrows():
         event = str(row.get(event_col, ''))
         qualifiers = str(row.get('qualifiers', ''))
@@ -3243,10 +3244,15 @@ def plot_possession_path(df_possession, facecolor="#EFE9E6"):
         if np.isnan(x) or np.isnan(y):
             continue
 
+        event_num += 1
         marker = '*' if is_goal_kick else ('D' if event in SHOT_TYPES else 'o')
         size   = 200 if is_goal_kick else (120 if event in SHOT_TYPES else 60)
         ax.scatter(x, y, c=color, s=size, marker=marker, zorder=4,
                    edgecolors='white', linewidths=0.8)
+
+        ax.text(x + 1.2, y + 1.2, str(event_num), fontsize=7, color='white',
+                fontweight='bold', zorder=6,
+                bbox=dict(facecolor='#333333', alpha=0.7, edgecolor='none', pad=1))
 
         if not (np.isnan(ex) or np.isnan(ey)):
             pitch.arrows(x, y, ex, ey, ax=ax, color=color,
